@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Industry Attractiveness Explorer</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f9fafb; color: #1f2937; line-height: 1.6; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 24px; }
+        
+        /* Header */
+        .header { margin-bottom: 48px; }
+        .header h1 { font-size: 32px; font-weight: 700; margin-bottom: 12px; }
+        .header p { font-size: 16px; color: #4b5563; margin-bottom: 12px; max-width: 900px; }
+        .source { font-size: 14px; color: #6b7280; }
+        .source a { color: #7c3aed; text-decoration: none; }
+        .source a:hover { text-decoration: underline; }
+        
+        /* Dimension Cards */
+        .cards-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; margin-bottom: 48px; }
+        .card { background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .card-top { height: 4px; }
+        .card.margin .card-top { background: #7c3aed; }
+        .card.growth .card-top { background: #0891b2; }
+        .card.roic .card-top { background: #059669; }
+        .card-header { padding: 20px; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; gap: 12px; }
+        .card-icon { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 6px; font-weight: 700; color: white; font-size: 18px; }
+        .card.margin .card-icon { background: #7c3aed; }
+        .card.growth .card-icon { background: #0891b2; }
+        .card.roic .card-icon { background: #059669; }
+        .card-title { font-size: 18px; font-weight: 600; }
+        .card-body { padding: 20px; }
+        .card-desc { font-size: 14px; color: #6b7280; margin-bottom: 16px; }
+        .card-stat { display: flex; justify-content: space-between; margin-bottom: 12px; }
+        .card-stat-label { color: #6b7280; }
+        .card-stat-value { font-weight: 600; }
+        
+        /* Controls */
+        .controls { background: white; padding: 24px; border-radius: 8px; margin-bottom: 24px; display: flex; gap: 16px; flex-wrap: wrap; align-items: center; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .control-group { display: flex; gap: 8px; align-items: center; }
+        .control-label { font-size: 14px; font-weight: 500; color: #4b5563; }
+        select, input { padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; }
+        select:focus, input:focus { outline: none; border-color: #7c3aed; box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1); }
+        
+        /* Tabs */
+        .tabs { display: flex; gap: 4px; margin-bottom: 24px; }
+        .tab-btn { padding: 8px 16px; background: white; border: 1px solid #d1d5db; border-radius: 6px 6px 0 0; cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.2s; }
+        .tab-btn.active { background: #7c3aed; color: white; border-color: #7c3aed; }
+        .tab-btn:hover { border-color: #9f7aea; }
+        
+        /* Views */
+        .view { display: none; }
+        .view.active { display: block; }
+        .bar-chart { background: white; padding: 24px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .bar-item { display: flex; gap: 12px; margin-bottom: 16px; align-items: center; }
+        .bar-label { width: 200px; font-size: 13px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; }
+        .bar-container { flex: 1; }
+        .bar { height: 24px; border-radius: 4px; transition: all 0.2s; cursor: pointer; display: flex; align-items: center; padding: 0 8px; color: white; font-size: 12px; font-weight: 600; }
+        .bar:hover { opacity: 0.8; }
+        .bar.positive { background: #3b82f6; }
+        .bar.negative { background: #ef4444; }
+        .bar-value { font-size: 12px; width: 50px; text-align: right; font-weight: 600; }
+        
+        /* Scatter Plot */
+        .scatter-container { background: white; padding: 24px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .scatter-controls { display: flex; gap: 12px; margin-bottom: 20px; }
+        #scatterPlot { width: 100%; }
+        
+        /* Data Table */
+        .data-table-wrapper { background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        table { width: 100%; border-collapse: collapse; }
+        thead { background: #f3f4f6; }
+        th { padding: 12px; text-align: left; font-weight: 600; font-size: 13px; cursor: pointer; user-select: none; border-bottom: 2px solid #e5e7eb; }
+        th:hover { background: #e5e7eb; }
+        td { padding: 12px; border-bottom: 1px solid #e5e7eb; font-size: 14px; }
+        tbody tr { cursor: pointer; transition: background 0.1s; }
+        tbody tr:hover { background: #f9fafb; }
+        tbody tr.selected { background: #f3e8ff; }
+        
+        /* Profile Panel */
+        .profile-panel { background: white; padding: 24px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 24px; }
+        .profile-name { font-size: 24px; font-weight: 700; margin-bottom: 8px; }
+        .profile-firms { font-size: 14px; color: #6b7280; margin-bottom: 24px; }
+        .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
+        .metric { padding: 16px; border-radius: 6px; }
+        .metric.margin { background: #f5f3ff; border-left: 4px solid #7c3aed; }
+        .metric.growth { background: #f0fdfa; border-left: 4px solid #0891b2; }
+        .metric.roic { background: #f0fdf4; border-left: 4px solid #059669; }
+        .metric-name { font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: #6b7280; margin-bottom: 8px; }
+        .metric-value { font-size: 28px; font-weight: 700; margin-bottom: 12px; }
+        .metric-detail { font-size: 13px; color: #6b7280; margin-bottom: 4px; }
+        .sparkline { margin-top: 12px; width: 100%; }
+        
+        /* Default message */
+        .default-message { padding: 40px; text-align: center; color: #9ca3af; }
+        .default-message h3 { font-size: 18px; font-weight: 600; margin-bottom: 12px; color: #6b7280; }
+        .default-message p { font-size: 14px; line-height: 1.8; max-width: 600px; margin: 0 auto; }
+        
+        /* Footer */
+        .footer { text-align: center; padding: 24px; color: #9ca3af; font-size: 13px; margin-top: 48px; }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header h1 { font-size: 24px; }
+            .controls { flex-direction: column; align-items: flex-start; }
+            .bar-label { width: 120px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>Industry Attractiveness Explorer</h1>
+            <p>A key assumption in industry analysis is that some industries are more attractive than others — they offer higher profits, stronger revenue growth, or better returns on investment. Use this tool to explore whether and how much industries differ on these dimensions.</p>
+            <div class="source">
+                <strong>Data:</strong> <a href="https://pages.stern.nyu.edu/~adamodar/New_Home_Page/datacurrent.html" target="_blank">Aswath Damodaran, NYU Stern</a>. Global publicly traded firms, 2011&ndash;2026.
+            </div>
+        </div>
+
+        <!-- Methodology note -->
+        <div style="background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:16px 20px;margin-bottom:32px;font-size:13px;color:#4b5563;line-height:1.7">
+            <strong style="color:#1f2937">About the data:</strong> All metrics are computed from aggregated financials of publicly listed companies classified in each industry. Specifically, Damodaran calculates industry ratios by summing all firms&rsquo; numerators and denominators (e.g., total industry operating income divided by total industry revenue), which means larger firms contribute more to the industry figure. Profit margins and returns on investment are shown as 5-year averages (2021&ndash;2026) to smooth out short-term fluctuations; revenue growth reflects the most recent 5-year CAGR (2021&ndash;2026). In the industry detail view, &ldquo;pp&rdquo; stands for percentage points and indicates the difference relative to the overall market average. Historical charts show how each metric evolved over time.
+            <div style="margin-top:8px">
+                <strong style="color:#1f2937">Important limitations:</strong> The data cover only publicly listed companies and do not reflect the many private firms that operate in each industry. Industry classifications are based on each firm&rsquo;s primary business, although many large corporations operate across multiple industries. Some industries (marked with fewer firms) may be more sensitive to individual company performance.
+            </div>
+        </div>
+        
+        <!-- Dimension Cards -->
+        <div class="cards-grid">
+            <div class="card margin">
+                <div class="card-top"></div>
+                <div class="card-header">
+                    <div class="card-icon">M</div>
+                    <div class="card-title">Profit Margin</div>
+                </div>
+                <div class="card-body">
+                    <div class="card-desc">Operating margin measures what share of revenue remains as profit after operating costs. For example, an operating margin of 10% means that for every 100 units (e.g., $, &pound;, &euro;) of revenue, 10 units remain as operating profit after accounting for all operating expenses. Higher margins indicate that an industry retains more of its revenue as profit.</div>
+                    <div class="card-stat">
+                        <span class="card-stat-label">Market Average:</span>
+                        <span class="card-stat-value" id="margin-market">—</span>
+                    </div>
+                    <div class="card-stat">
+                        <span class="card-stat-label">Range (min–max):</span>
+                        <span class="card-stat-value" id="margin-range">—</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card growth">
+                <div class="card-top"></div>
+                <div class="card-header">
+                    <div class="card-icon">G</div>
+                    <div class="card-title">Industry Growth</div>
+                </div>
+                <div class="card-body">
+                    <div class="card-desc">Revenue growth is measured as the compound annual growth rate (CAGR) over the past five years, reflecting how fast industry revenues have been growing on an annualised basis. Note that high revenue growth does not necessarily mean the industry is expanding &mdash; it can also reflect rising prices (e.g., in commodity-driven industries like oil &amp; gas or metals). Compare the historical trends to distinguish structural growth from price fluctuations or other cyclical effects.</div>
+                    <div class="card-stat">
+                        <span class="card-stat-label">Market Average:</span>
+                        <span class="card-stat-value" id="growth-market">—</span>
+                    </div>
+                    <div class="card-stat">
+                        <span class="card-stat-label">Range (min–max):</span>
+                        <span class="card-stat-value" id="growth-range">—</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card roic">
+                <div class="card-top"></div>
+                <div class="card-header">
+                    <div class="card-icon">R</div>
+                    <div class="card-title">Return on Investment</div>
+                </div>
+                <div class="card-body">
+                    <div class="card-desc">Return on invested capital (ROIC) measures how efficiently firms turn invested money into profits. For example, an ROIC of 15% means that for every 100 units of capital invested, the industry generates 15 units in operating profit. A high ROIC signals that the industry creates substantial value relative to the capital required to operate in it.</div>
+                    <div class="card-stat">
+                        <span class="card-stat-label">Market Average:</span>
+                        <span class="card-stat-value" id="roic-market">—</span>
+                    </div>
+                    <div class="card-stat">
+                        <span class="card-stat-label">Range (min–max):</span>
+                        <span class="card-stat-value" id="roic-range">—</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Profile Panel -->
+        <div class="profile-panel" id="profilePanel">
+            <div class="default-message">
+                <h3>How to Use This Tool</h3>
+                <p>Click on any industry in the bar chart, scatter plot, or data table to see detailed metrics including historical trends. The profile panel will show you how each industry compares to the market average on all three dimensions.</p>
+            </div>
+        </div>
+        
+        <!-- Controls -->
+        <div class="controls">
+            <div class="control-group">
+                <label class="control-label" for="sortSelect">Sort By:</label>
+                <select id="sortSelect">
+                    <option value="alphabetical">Alphabetical</option>
+                    <option value="margin">Profit Margin (High → Low)</option>
+                    <option value="growth">Growth (High → Low)</option>
+                    <option value="roic">ROIC (High → Low)</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label class="control-label" for="searchInput">Search:</label>
+                <input type="text" id="searchInput" placeholder="Filter by industry name...">
+            </div>
+        </div>
+        
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab-btn active" data-view="bar-chart">Bar Chart</button>
+            <button class="tab-btn" data-view="scatter">Scatter Plot</button>
+            <button class="tab-btn" data-view="table">Data Table</button>
+        </div>
+        
+        <!-- Bar Chart View -->
+        <div class="view active" id="bar-chart">
+            <div class="bar-chart" id="barChartContainer"></div>
+        </div>
+        
+        <!-- Scatter Plot View -->
+        <div class="view" id="scatter">
+            <div class="scatter-container">
+                <div class="scatter-controls">
+                    <div class="control-group">
+                        <label class="control-label">X Axis:</label>
+                        <select id="scatterXAxis">
+                            <option value="m">Profit Margin</option>
+                            <option value="g">Growth</option>
+                            <option value="r">ROIC</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Y Axis:</label>
+                        <select id="scatterYAxis" onload="this.value='g';">
+                            <option value="m">Profit Margin</option>
+                            <option value="g" selected>Growth</option>
+                            <option value="r">ROIC</option>
+                        </select>
+                    </div>
+                </div>
+                <svg id="scatterPlot" width="800" height="500"></svg>
+            </div>
+        </div>
+        
+        <!-- Data Table View -->
+        <div class="view" id="table">
+            <div class="data-table-wrapper">
+                <table id="dataTable">
+                    <thead>
+                        <tr>
+                            <th data-sort="name">Industry</th>
+                            <th data-sort="firms">Firms</th>
+                            <th data-sort="m">Profit Margin %</th>
+                            <th data-sort="g">Growth %</th>
+                            <th data-sort="r">ROIC %</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <div class="footer">Built by Dr Karl Taeuscher for educational use. Data from Aswath Damodaran's datasets.</div>
+    </div>
+    
+    <script>
+var INDUSTRIES = [
+  {n:"Advertising",f:419,m:9.3,g:8.9,r:22.0,ts:{"2011":[7.9,null,null],"2012":[8.1,null,null],"2013":[8.3,5.0,29.7],"2014":[null,9.7,28.2],"2015":[11.7,12.5,34.4],"2016":[10.4,8.5,33.5],"2017":[10.8,7.7,35.9],"2018":[10.0,22.6,25.4],"2019":[9.2,5.7,20.1],"2020":[5.0,3.8,9.3],"2021":[9.1,11.2,21.2],"2022":[10.1,9.2,21.3],"2023":[8.8,7.1,22.3],"2024":[8.8,10.4,21.5],"2026":[9.5,8.9,23.7]}},
+  {n:"Aerospace/Defense",f:319,m:8.9,g:11.4,r:15.2,ts:{"2011":[9.0,null,null],"2012":[8.9,null,null],"2013":[9.4,4.9,38.2],"2014":[null,6.9,24.3],"2015":[10.1,8.7,20.0],"2016":[8.9,9.4,19.7],"2017":[9.2,7.3,20.4],"2018":[10.2,10.6,23.1],"2019":[9.9,12.7,21.6],"2020":[5.9,15.3,11.4],"2021":[8.3,7.2,12.7],"2022":[8.8,11.9,12.1],"2023":[8.8,13.0,13.9],"2024":[8.7,6.3,13.7],"2026":[9.9,11.4,23.5]}},
+  {n:"Air Transport",f:150,m:0.8,g:26.6,r:3.6,ts:{"2011":[6.9,null,null],"2012":[4.8,null,null],"2013":[5.1,7.7,6.5],"2014":[null,8.6,5.2],"2015":[10.8,16.3,9.8],"2016":[11.4,18.8,9.9],"2017":[10.5,15.1,8.9],"2018":[9.6,24.9,8.5],"2019":[8.6,14.2,6.6],"2020":[-14.4,-8.3,-9.2],"2021":[-21.2,-7.2,-10.8],"2022":[1.5,-4.2,0.9],"2023":[7.5,4.9,7.6],"2024":[8.0,11.6,8.8],"2026":[8.4,26.6,11.5]}},
+  {n:"Apparel",f:1207,m:14.3,g:18.5,r:19.6,ts:{"2011":[12.2,null,null],"2012":[11.7,null,null],"2013":[12.2,6.4,18.8],"2014":[null,10.9,14.9],"2015":[10.9,7.4,12.6],"2016":[10.1,3.5,13.3],"2017":[10.8,9.2,14.0],"2018":[11.7,10.0,15.2],"2019":[11.8,8.8,15.1],"2020":[8.2,2.7,8.8],"2021":[14.3,16.7,17.9],"2022":[15.0,16.7,20.1],"2023":[14.9,9.4,21.3],"2024":[14.5,10.1,18.9],"2026":[12.9,18.5,19.8]}},
+  {n:"Auto & Truck",f:165,m:6.6,g:34.5,r:6.5,ts:{"2011":[5.5,null,null],"2012":[6.0,null,null],"2013":[5.7,6.7,7.8],"2014":[null,10.8,6.5],"2015":[6.4,15.3,6.3],"2016":[6.3,12.0,7.3],"2017":[6.1,10.9,6.5],"2018":[6.0,15.6,5.8],"2019":[4.9,2.2,4.6],"2020":[2.7,-5.3,2.0],"2021":[6.8,9.0,6.3],"2022":[6.9,10.7,5.3],"2023":[7.8,16.2,8.6],"2024":[6.9,11.9,7.1],"2026":[4.5,34.5,5.2]}},
+  {n:"Auto Parts",f:797,m:5.3,g:21.4,r:7.6,ts:{"2011":[6.2,null,null],"2012":[6.6,null,null],"2013":[6.6,6.0,14.3],"2014":[null,11.4,11.2],"2015":[6.9,9.7,10.9],"2016":[7.0,8.0,12.1],"2017":[7.7,11.8,12.3],"2018":[6.7,11.4,10.2],"2019":[5.4,4.5,7.5],"2020":[2.7,-5.0,3.4],"2021":[5.8,4.9,8.0],"2022":[3.9,1.9,4.2],"2023":[5.5,4.6,7.0],"2024":[5.4,11.2,7.9],"2026":[5.7,21.4,10.9]}},
+  {n:"Bank (Money Center)",f:604,m:0.9,g:26.3,r:0.0,ts:{"2014":[null,12.9,-0.0],"2015":[null,12.3,0.0],"2016":[0.0,10.4,0.0],"2017":[0.8,8.7,0.0],"2018":[0.7,14.7,0.0],"2019":[0.8,17.4,0.0],"2020":[0.9,6.5,0.0],"2021":[1.0,9.1,0.0],"2022":[0.7,12.2,0.0],"2023":[0.9,14.2,0.0],"2024":[null,16.1,null],"2026":[1.2,26.3,null]}},
+  {n:"Banks (Regional)",f:825,m:0.9,g:11.8,r:-0.0,ts:{"2011":[0.1,null,null],"2012":[0.0,null,null],"2013":[0.0,6.4,0.1],"2014":[null,12.3,-0.0],"2015":[null,15.8,-0.0],"2016":[0.0,14.3,-0.0],"2017":[0.8,14.1,-0.0],"2018":[0.7,11.5,-0.0],"2019":[0.7,13.8,-0.0],"2020":[0.8,8.6,-0.0],"2021":[0.8,15.4,-0.0],"2022":[0.9,13.8,-0.0],"2023":[0.9,12.3,-0.0],"2024":[null,5.8,null],"2026":[0.9,11.8,null]}},
+  {n:"Beverage (Alcoholic)",f:217,m:22.4,g:11.9,r:15.6,ts:{"2011":[17.7,null,null],"2012":[18.9,null,null],"2013":[20.0,6.9,15.3],"2014":[null,7.4,13.4],"2015":[20.1,8.8,12.1],"2016":[19.3,3.7,13.2],"2017":[21.0,5.2,14.2],"2018":[21.6,6.5,12.7],"2019":[21.9,8.3,13.2],"2020":[20.5,5.1,11.5],"2021":[22.0,9.2,13.0],"2022":[22.3,8.6,13.9],"2023":[22.0,10.4,16.1],"2024":[22.8,8.9,15.9],"2026":[22.8,11.9,19.0]}},
+  {n:"Beverage (Soft)",f:94,m:17.5,g:17.6,r:25.6,ts:{"2014":[null,4.6,21.8],"2015":[14.8,6.2,18.2],"2016":[14.7,13.0,22.0],"2017":[15.6,7.2,20.4],"2018":[16.8,7.0,20.8],"2019":[16.4,14.7,20.2],"2020":[15.3,10.9,19.8],"2021":[17.6,5.1,22.2],"2022":[17.0,15.4,22.6],"2023":[17.1,12.0,26.1],"2024":[17.6,13.4,26.5],"2026":[18.0,17.6,30.8]}},
+  {n:"Broadcasting",f:127,m:12.3,g:2.9,r:11.1,ts:{"2011":[16.0,null,null],"2012":[15.9,null,null],"2013":[16.5,4.1,17.4],"2014":[null,5.2,15.6],"2015":[17.8,10.1,15.7],"2016":[17.0,4.4,16.1],"2017":[17.3,8.4,15.4],"2018":[16.5,6.7,16.8],"2019":[17.6,7.4,16.3],"2020":[15.4,4.3,13.0],"2021":[16.3,5.7,14.8],"2022":[13.5,12.7,10.9],"2023":[10.3,4.6,8.8],"2024":[10.6,-0.4,9.1],"2026":[10.5,2.9,11.7]}},
+  {n:"Brokerage & Investment Banking",f:623,m:3.0,g:21.4,r:0.2,ts:{"2011":[0.1,null,null],"2012":[0.2,null,null],"2013":[0.4,4.6,0.3],"2014":[null,8.5,0.0],"2015":[0.1,10.5,0.0],"2016":[0.3,11.1,0.0],"2017":[2.1,21.2,0.0],"2018":[2.4,14.8,0.1],"2019":[2.5,8.9,0.1],"2020":[2.3,12.2,0.1],"2021":[3.6,26.7,0.4],"2022":[2.8,15.7,0.1],"2023":[3.1,13.3,0.2],"2024":[null,22.2,null],"2026":[2.4,21.4,null]}},
+  {n:"Building Materials",f:469,m:11.0,g:11.8,r:17.1,ts:{"2011":[6.7,null,null],"2012":[6.1,null,null],"2013":[6.6,5.4,10.1],"2014":[null,9.3,9.8],"2015":[7.6,12.2,9.7],"2016":[8.1,13.1,12.0],"2017":[9.3,15.5,12.6],"2018":[8.9,11.2,12.3],"2019":[8.3,7.7,10.7],"2020":[8.9,4.0,12.2],"2021":[11.6,10.6,18.2],"2022":[11.0,12.0,16.4],"2023":[10.9,11.9,16.7],"2024":[10.8,9.1,15.6],"2026":[10.7,11.8,18.5]}},
+  {n:"Business & Consumer Services",f:994,m:9.9,g:15.5,r:22.3,ts:{"2011":[7.8,null,null],"2012":[7.8,null,null],"2013":[7.8,7.5,21.5],"2014":[null,7.9,21.6],"2015":[8.4,14.8,20.4],"2016":[8.8,10.2,22.7],"2017":[9.2,12.0,22.1],"2018":[9.0,13.9,20.2],"2019":[9.0,12.1,18.8],"2020":[8.1,6.0,16.2],"2021":[9.0,10.9,19.5],"2022":[9.2,11.3,19.5],"2023":[9.9,7.0,21.1],"2024":[10.6,8.6,21.4],"2026":[10.9,15.5,30.2]}},
+  {n:"Cable TV",f:42,m:19.3,g:-2.7,r:12.6,ts:{"2011":[18.6,null,null],"2012":[18.4,null,null],"2013":[18.3,10.4,19.1],"2014":[null,10.8,15.7],"2015":[17.8,11.7,13.4],"2016":[17.0,12.9,13.5],"2017":[17.1,11.9,12.1],"2018":[17.7,8.9,11.1],"2019":[17.6,9.7,10.8],"2020":[19.1,2.3,11.3],"2021":[20.0,2.7,13.0],"2022":[20.2,10.4,12.7],"2023":[19.7,-1.7,12.0],"2024":[18.1,2.3,12.4],"2026":[18.3,-2.7,13.2]}},
+  {n:"Chemical (Basic)",f:909,m:8.1,g:9.3,r:7.4,ts:{"2011":[10.2,null,null],"2012":[6.7,null,null],"2013":[8.8,6.1,11.0],"2014":[null,10.2,10.9],"2015":[8.5,7.3,7.6],"2016":[9.7,5.9,9.3],"2017":[10.7,13.4,11.1],"2018":[11.2,18.7,12.2],"2019":[8.0,12.6,7.8],"2020":[6.6,10.1,5.8],"2021":[12.6,19.0,13.7],"2022":[10.7,16.7,10.8],"2023":[4.8,6.9,4.6],"2024":[4.5,7.5,4.2],"2026":[null,9.3,3.8]}},
+  {n:"Chemical (Diversified)",f:63,m:8.2,g:24.4,r:7.7,ts:{"2011":[9.4,null,null],"2012":[8.0,null,null],"2013":[7.4,2.8,9.9],"2014":[null,8.8,9.2],"2015":[9.0,2.5,9.6],"2016":[10.2,6.3,10.7],"2017":[11.4,18.1,11.9],"2018":[11.8,18.6,11.5],"2019":[8.4,16.3,7.5],"2020":[4.0,5.5,3.1],"2021":[11.6,12.4,11.0],"2022":[10.3,13.8,8.9],"2023":[6.7,9.8,5.5],"2024":[5.5,4.8,4.8],"2026":[6.9,24.4,8.3]}},
+  {n:"Chemical (Specialty)",f:952,m:13.0,g:10.4,r:13.2,ts:{"2011":[12.3,null,null],"2012":[12.7,null,null],"2013":[11.3,8.6,15.0],"2014":[null,10.5,11.9],"2015":[11.7,9.2,12.2],"2016":[10.9,8.0,11.2],"2017":[11.4,13.4,12.2],"2018":[12.4,12.1,13.1],"2019":[10.9,11.7,10.8],"2020":[9.9,10.0,8.8],"2021":[13.9,17.1,14.7],"2022":[16.2,18.8,17.1],"2023":[12.3,10.8,12.4],"2024":[11.0,8.7,9.6],"2026":[11.4,10.4,12.1]}},
+  {n:"Coal & Related Energy",f:212,m:21.5,g:11.3,r:25.9,ts:{"2011":[20.1,null,null],"2012":[15.7,null,null],"2013":[5.9,15.7,9.0],"2014":[null,18.4,7.4],"2015":[6.4,-11.0,3.5],"2016":[5.0,-18.2,2.8],"2017":[17.2,-2.8,14.2],"2018":[18.4,20.9,15.7],"2019":[16.7,19.7,14.8],"2020":[12.3,16.0,10.5],"2021":[17.3,45.8,18.1],"2022":[29.2,31.9,38.6],"2023":[24.1,17.3,32.2],"2024":[20.8,13.1,24.1],"2026":[16.2,11.3,16.3]}},
+  {n:"Computer Services",f:1225,m:7.8,g:17.4,r:22.5,ts:{"2011":[7.7,null,null],"2012":[8.2,null,null],"2013":[7.5,6.3,27.8],"2014":[null,9.2,23.4],"2015":[7.4,12.9,21.3],"2016":[7.4,9.2,22.6],"2017":[7.8,12.6,20.7],"2018":[7.7,15.2,21.3],"2019":[7.4,14.4,19.8],"2020":[7.3,11.5,19.2],"2021":[7.5,17.3,21.2],"2022":[7.8,16.6,20.2],"2023":[8.1,14.1,21.1],"2024":[7.7,12.5,20.4],"2026":[8.1,17.4,29.5]}},
+  {n:"Computers/Peripherals",f:343,m:13.8,g:13.3,r:22.4,ts:{"2011":[8.1,null,null],"2012":[10.0,null,null],"2013":[10.6,-0.8,29.2],"2014":[null,4.2,17.6],"2015":[11.6,6.8,18.4],"2016":[10.7,11.1,14.6],"2017":[12.9,15.3,16.6],"2018":[13.0,8.8,17.6],"2019":[10.8,7.4,13.6],"2020":[10.9,2.9,15.1],"2021":[14.3,12.2,22.7],"2022":[14.6,13.3,20.7],"2023":[12.5,6.2,15.8],"2024":[14.2,9.5,20.4],"2026":[13.7,13.3,32.2]}},
+  {n:"Construction Supplies",f:804,m:9.4,g:13.6,r:9.7,ts:{"2014":[null,7.3,7.9],"2015":[6.6,9.0,6.1],"2016":[7.2,6.3,6.9],"2017":[8.8,11.8,8.6],"2018":[9.6,11.0,9.6],"2019":[10.5,7.6,11.5],"2020":[9.8,6.7,9.4],"2021":[10.4,13.2,10.3],"2022":[8.1,8.5,7.2],"2023":[9.0,10.2,9.3],"2024":[9.6,11.3,9.7],"2026":[9.8,13.6,12.0]}},
+  {n:"Diversified",f:329,m:15.4,g:19.9,r:10.9,ts:{"2011":[10.4,null,null],"2012":[9.2,null,null],"2013":[8.6,8.0,7.9],"2014":[null,8.8,7.8],"2015":[13.2,10.7,9.4],"2016":[11.8,3.6,9.3],"2017":[13.0,7.5,10.8],"2018":[11.6,11.3,9.2],"2019":[11.4,4.2,8.7],"2020":[12.6,1.3,8.6],"2021":[17.2,12.1,12.4],"2022":[9.4,17.5,6.3],"2023":[15.8,10.2,11.9],"2024":[19.2,16.8,13.1],"2026":[15.2,19.9,10.8]}},
+  {n:"Drugs (Biotechnology)",f:1193,m:11.1,g:9.7,r:4.0,ts:{"2014":[null,16.5,12.5],"2015":[27.2,11.9,18.0],"2016":[24.3,18.0,14.1],"2017":[25.8,19.3,10.3],"2018":[22.2,14.9,8.6],"2019":[14.1,17.3,7.2],"2020":[11.7,19.3,4.8],"2021":[16.6,27.5,7.0],"2022":[13.9,15.4,4.7],"2023":[5.5,7.2,0.7],"2024":[6.3,6.0,1.9],"2026":[13.4,9.7,5.5]}},
+  {n:"Drugs (Pharmaceutical)",f:1260,m:21.9,g:10.1,r:16.2,ts:{"2014":[null,12.4,13.9],"2015":[19.5,10.7,12.9],"2016":[19.3,12.5,12.7],"2017":[19.6,13.4,12.8],"2018":[19.5,14.3,12.1],"2019":[19.1,11.9,11.9],"2020":[17.9,11.4,12.5],"2021":[22.5,12.2,15.5],"2022":[22.5,11.6,14.0],"2023":[19.2,10.4,12.9],"2024":[21.4,10.3,13.7],"2026":[24.1,10.1,24.9]}},
+  {n:"Education",f:281,m:13.4,g:12.5,r:11.2,ts:{"2014":[null,11.5,11.9],"2015":[9.2,11.1,10.2],"2016":[9.5,11.4,10.5],"2017":[11.9,6.4,11.5],"2018":[11.6,6.0,11.0],"2019":[12.2,13.5,11.2],"2020":[8.5,6.6,7.5],"2021":[11.4,7.4,8.4],"2022":[10.3,10.7,6.3],"2023":[12.7,10.3,9.3],"2024":[14.9,5.6,11.6],"2026":[17.4,12.5,20.3]}},
+  {n:"Electrical Equipment",f:1158,m:7.7,g:19.1,r:11.4,ts:{"2011":[7.9,null,null],"2012":[6.9,null,null],"2013":[6.8,4.7,12.9],"2014":[null,11.8,11.8],"2015":[7.2,7.8,10.1],"2016":[7.4,10.0,10.7],"2017":[8.2,13.8,12.4],"2018":[8.4,11.0,12.8],"2019":[7.3,7.2,11.6],"2020":[5.9,6.5,8.2],"2021":[7.4,12.5,11.2],"2022":[7.0,11.8,9.6],"2023":[7.5,14.1,10.9],"2024":[7.7,16.2,10.6],"2026":[8.7,19.1,14.9]}},
+  {n:"Electronics (Consumer & Office)",f:122,m:5.8,g:11.1,r:9.2,ts:{"2011":[3.4,null,null],"2012":[2.3,null,null],"2013":[3.3,2.6,8.1],"2014":[null,1.8,4.9],"2015":[3.4,4.7,9.5],"2016":[3.0,5.7,9.5],"2017":[4.7,1.4,10.3],"2018":[5.3,15.4,11.1],"2019":[4.9,9.5,9.4],"2020":[4.9,2.6,7.2],"2021":[6.5,15.3,11.7],"2022":[5.3,8.8,6.0],"2023":[4.8,6.6,6.2],"2024":[5.9,8.0,10.6],"2026":[6.2,11.1,11.5]}},
+  {n:"Electronics (General)",f:1481,m:6.8,g:12.6,r:9.6,ts:{"2014":[null,6.1,8.6],"2015":[6.9,8.2,9.4],"2016":[6.2,7.7,9.3],"2017":[8.1,14.0,11.4],"2018":[7.1,11.6,11.2],"2019":[6.2,9.1,8.6],"2020":[6.4,4.5,8.7],"2021":[8.6,15.6,14.3],"2022":[7.3,12.6,8.7],"2023":[5.6,8.1,6.4],"2024":[6.2,8.4,7.8],"2026":[6.6,12.6,10.8]}},
+  {n:"Engineering/Construction",f:1390,m:5.5,g:11.7,r:8.3,ts:{"2014":[null,5.3,8.6],"2015":[4.4,10.2,7.7],"2016":[4.9,10.2,9.3],"2017":[4.9,15.2,9.5],"2018":[5.3,13.0,9.6],"2019":[5.3,9.7,9.5],"2020":[5.0,6.2,8.9],"2021":[4.9,7.0,9.1],"2022":[7.7,5.9,7.3],"2023":[4.8,6.7,7.9],"2024":[4.9,10.4,7.8],"2026":[5.2,11.7,9.5]}},
+  {n:"Entertainment",f:733,m:10.9,g:11.8,r:10.6,ts:{"2011":[15.1,null,null],"2012":[16.5,null,null],"2013":[17.2,2.0,23.1],"2014":[null,7.3,22.9],"2015":[18.5,9.6,20.9],"2016":[18.0,7.2,23.9],"2017":[17.7,13.8,20.8],"2018":[15.4,22.8,17.3],"2019":[12.8,16.2,12.8],"2020":[9.2,15.3,8.8],"2021":[11.3,14.3,11.2],"2022":[9.7,11.9,9.7],"2023":[8.9,8.8,7.5],"2024":[10.9,7.4,9.7],"2026":[13.6,11.8,14.9]}},
+  {n:"Environmental & Waste Services",f:397,m:11.4,g:14.0,r:11.4,ts:{"2011":[9.5,null,null],"2012":[8.9,null,null],"2013":[9.0,8.6,16.0],"2014":[null,9.1,14.4],"2015":[8.1,25.0,12.0],"2016":[9.9,12.2,15.7],"2017":[11.7,14.2,16.0],"2018":[11.5,18.1,15.0],"2019":[10.8,11.3,12.5],"2020":[10.7,9.9,11.6],"2021":[11.4,18.9,12.6],"2022":[11.1,19.3,10.6],"2023":[11.0,10.5,10.8],"2024":[11.8,10.8,11.1],"2026":[11.7,14.0,11.9]}},
+  {n:"Farming/Agriculture",f:428,m:7.3,g:18.0,r:9.3,ts:{"2011":[6.6,null,null],"2012":[4.8,null,null],"2013":[4.0,8.8,6.5],"2014":[null,11.8,8.1],"2015":[5.3,2.8,5.8],"2016":[5.1,0.9,5.9],"2017":[5.7,2.4,6.9],"2018":[5.7,8.5,6.9],"2019":[4.8,-2.4,5.4],"2020":[6.9,12.6,7.4],"2021":[7.4,15.5,10.0],"2022":[7.6,18.1,10.3],"2023":[8.3,19.3,10.6],"2024":[6.9,21.9,7.5],"2026":[6.5,18.0,8.4]}},
+  {n:"Financial Svcs. (Non-bank & Insurance)",f:1138,m:13.3,g:20.1,r:0.7,ts:{"2011":[2.6,null,null],"2012":[3.3,null,null],"2013":[4.0,19.7,0.6],"2014":[null,17.4,0.4],"2015":[7.9,12.2,0.3],"2016":[7.6,16.2,0.4],"2017":[8.5,15.2,0.4],"2018":[9.0,17.5,0.4],"2019":[7.7,12.5,0.4],"2020":[10.2,11.1,0.5],"2021":[11.3,15.8,0.7],"2022":[12.2,13.9,0.6],"2023":[14.0,12.0,0.9],"2024":[null,16.7,null],"2026":[15.6,20.1,null]}},
+  {n:"Food Processing",f:1450,m:8.6,g:13.3,r:12.8,ts:{"2011":[8.2,null,null],"2012":[8.1,null,null],"2013":[8.1,7.2,14.6],"2014":[null,8.5,14.2],"2015":[8.3,5.6,12.3],"2016":[9.0,9.9,13.9],"2017":[9.2,12.9,14.0],"2018":[8.7,10.5,12.5],"2019":[8.7,11.3,11.9],"2020":[9.6,10.4,14.0],"2021":[9.4,8.6,13.8],"2022":[8.5,9.5,11.8],"2023":[7.8,10.6,11.6],"2024":[8.6,13.2,12.3],"2026":[8.7,13.3,14.7]}},
+  {n:"Food Wholesalers",f:183,m:2.6,g:22.5,r:11.5,ts:{"2011":[2.9,null,null],"2012":[3.0,null,null],"2013":[3.1,2.1,14.3],"2014":[null,5.2,15.6],"2015":[2.6,11.8,13.6],"2016":[2.4,6.6,12.6],"2017":[2.7,11.9,12.4],"2018":[2.8,7.2,12.5],"2019":[2.5,7.8,10.7],"2020":[1.9,3.9,7.7],"2021":[2.3,13.1,9.5],"2022":[2.7,10.6,11.5],"2023":[2.5,17.4,10.7],"2024":[2.7,15.1,11.6],"2026":[2.6,22.5,14.0]}},
+  {n:"Furn/Home Furnishings",f:383,m:8.1,g:5.0,r:16.3,ts:{"2011":[5.9,null,null],"2012":[6.1,null,null],"2013":[6.6,3.0,17.2],"2014":[null,7.0,16.1],"2015":[7.6,8.1,14.7],"2016":[8.4,13.8,14.5],"2017":[8.4,14.0,19.3],"2018":[8.1,11.2,18.7],"2019":[7.6,10.0,15.6],"2020":[7.4,9.3,14.9],"2021":[9.2,13.8,21.8],"2022":[8.1,8.6,14.6],"2023":[7.5,7.5,13.1],"2024":[7.7,6.2,13.8],"2026":[7.9,5.0,18.0]}},
+  {n:"Green & Renewable Energy",f:258,m:31.3,g:19.5,r:6.9,ts:{"2014":[null,8.9,8.2],"2015":[35.1,10.5,6.7],"2016":[33.4,6.5,7.2],"2017":[36.8,22.6,7.5],"2018":[37.0,19.1,7.7],"2019":[35.8,22.4,7.1],"2020":[34.5,14.1,7.2],"2021":[33.6,18.9,8.0],"2022":[33.1,23.6,6.7],"2023":[29.5,13.6,7.2],"2024":[32.0,18.2,6.3],"2026":[28.4,19.5,6.2]}},
+  {n:"Healthcare Products",f:842,m:16.4,g:6.4,r:15.0,ts:{"2011":[12.5,null,null],"2012":[12.1,null,null],"2013":[12.6,16.8,16.2],"2014":[null,9.9,15.7],"2015":[15.8,6.6,15.9],"2016":[15.4,13.8,15.2],"2017":[15.8,13.3,15.3],"2018":[16.3,10.8,15.0],"2019":[16.2,11.7,14.0],"2020":[15.8,13.5,13.1],"2021":[20.4,21.0,19.2],"2022":[16.6,17.0,13.5],"2023":[13.9,9.8,11.0],"2024":[15.3,6.9,12.2],"2026":[15.7,6.4,18.9]}},
+  {n:"Healthcare Support Services",f:478,m:4.1,g:8.8,r:25.8,ts:{"2014":[null,10.6,28.8],"2015":[4.7,11.0,29.9],"2016":[4.6,15.0,30.9],"2017":[4.9,12.5,35.2],"2018":[4.8,16.4,30.4],"2019":[4.7,13.7,27.2],"2020":[5.2,13.2,26.6],"2021":[4.7,14.9,24.9],"2022":[4.5,14.3,24.3],"2023":[4.2,7.9,28.9],"2024":[3.7,7.5,23.3],"2026":[3.3,8.8,27.4]}},
+  {n:"Heathcare Information and Technology",f:430,m:17.2,g:13.3,r:15.6,ts:{"2012":[12.1,null,null],"2013":[11.9,8.1,17.9],"2014":[null,12.8,15.6],"2015":[12.2,16.4,13.2],"2016":[12.5,14.5,15.1],"2017":[14.4,15.2,15.2],"2018":[14.2,18.3,12.7],"2019":[13.9,19.1,13.1],"2020":[14.9,14.6,14.9],"2021":[20.2,24.6,21.0],"2022":[18.2,23.7,16.4],"2023":[15.8,21.5,12.8],"2024":[15.2,11.8,11.1],"2026":[16.7,13.3,16.7]}},
+  {n:"Homebuilding",f:160,m:13.3,g:11.8,r:15.0,ts:{"2011":[6.7,null,null],"2012":[6.6,null,null],"2013":[6.6,3.5,5.5],"2014":[null,8.4,8.1],"2015":[9.6,21.5,8.1],"2016":[9.5,21.3,9.2],"2017":[10.5,21.7,9.5],"2018":[11.0,18.0,10.8],"2019":[10.9,15.8,10.5],"2020":[10.6,7.7,9.5],"2021":[13.9,15.3,14.9],"2022":[15.7,11.8,17.6],"2023":[13.5,12.0,14.4],"2024":[12.6,6.7,13.6],"2026":[10.9,11.8,14.6]}},
+  {n:"Hospitals/Healthcare Facilities",f:249,m:11.9,g:24.0,r:13.5,ts:{"2014":[null,11.2,8.1],"2015":[13.0,13.8,8.0],"2016":[10.2,17.6,9.8],"2017":[9.8,17.0,8.4],"2018":[10.7,8.7,9.2],"2019":[10.8,9.4,9.5],"2020":[9.7,-0.9,8.5],"2021":[11.8,11.8,12.2],"2022":[11.7,16.0,11.6],"2023":[11.3,12.0,12.3],"2024":[11.8,19.8,12.9],"2026":[12.8,24.0,18.3]}},
+  {n:"Hotel/Gaming",f:656,m:10.7,g:32.5,r:7.1,ts:{"2011":[11.1,null,null],"2012":[11.8,null,null],"2013":[11.9,9.1,10.9],"2014":[null,11.5,9.3],"2015":[13.1,14.0,8.5],"2016":[13.6,9.5,8.8],"2017":[14.7,8.1,9.2],"2018":[15.3,11.7,10.3],"2019":[14.8,7.8,8.8],"2020":[-4.8,1.8,-3.0],"2021":[-4.4,1.3,-3.5],"2022":[7.5,6.1,2.1],"2023":[15.4,6.7,8.3],"2024":[16.8,14.5,10.9],"2026":[18.1,32.5,17.9]}},
+  {n:"Household Products",f:588,m:16.1,g:8.8,r:24.1,ts:{"2011":[14.4,null,null],"2012":[14.3,null,null],"2013":[14.7,8.8,27.2],"2014":[null,9.0,23.6],"2015":[15.4,7.1,23.2],"2016":[15.6,9.3,25.2],"2017":[16.0,13.7,28.5],"2018":[16.1,12.5,22.8],"2019":[16.8,11.2,22.8],"2020":[16.3,6.6,22.4],"2021":[16.2,7.6,25.1],"2022":[15.4,4.8,22.9],"2023":[15.5,4.9,20.3],"2024":[16.6,8.4,22.3],"2026":[16.7,8.8,29.8]}},
+  {n:"Information Services",f:86,m:16.6,g:20.6,r:26.5,ts:{"2011":[21.1,null,null],"2012":[22.0,null,null],"2013":[23.2,6.2,46.1],"2014":[null,6.7,35.8],"2015":[21.4,12.3,34.6],"2016":[21.9,15.9,34.0],"2017":[25.2,12.8,31.5],"2018":[26.4,16.0,34.5],"2019":[27.1,11.9,36.8],"2020":[22.3,6.4,21.1],"2021":[22.6,11.3,26.0],"2022":[23.2,10.1,28.7],"2023":[12.1,10.6,21.9],"2024":[12.2,12.1,21.3],"2026":[13.0,20.6,34.7]}},
+  {n:"Insurance (General)",f:204,m:12.8,g:18.9,r:19.3,ts:{"2011":[7.0,null,null],"2012":[8.0,null,null],"2013":[8.8,9.7,12.9],"2014":[null,13.4,14.3],"2015":[8.5,8.1,10.2],"2016":[7.7,6.3,10.1],"2017":[8.2,11.2,10.0],"2018":[9.6,10.5,12.2],"2019":[9.8,6.1,13.4],"2020":[8.7,6.0,10.3],"2021":[10.6,11.2,14.2],"2022":[10.8,8.1,11.1],"2023":[12.1,13.2,18.2],"2024":[14.8,13.4,22.3],"2026":[15.8,18.9,30.6]}},
+  {n:"Insurance (Life)",f:143,m:11.7,g:15.1,r:10.6,ts:{"2011":[8.6,null,null],"2012":[6.6,null,null],"2013":[8.7,12.1,12.1],"2014":[null,14.7,12.1],"2015":[9.5,12.3,12.0],"2016":[8.3,16.1,11.4],"2017":[8.4,14.2,11.0],"2018":[9.7,10.4,12.4],"2019":[9.3,6.6,11.6],"2020":[9.8,0.4,10.7],"2021":[10.6,8.8,10.9],"2022":[5.9,12.1,3.9],"2023":[11.0,6.1,9.6],"2024":[13.4,9.3,11.2],"2026":[17.5,15.1,17.5]}},
+  {n:"Insurance (Prop/Cas.)",f:248,m:11.8,g:15.8,r:15.3,ts:{"2011":[5.5,null,null],"2012":[7.6,null,null],"2013":[11.0,7.9,13.0],"2014":[null,11.2,12.5],"2015":[11.1,14.8,11.5],"2016":[10.5,13.4,12.1],"2017":[8.4,6.9,9.2],"2018":[9.6,4.5,10.7],"2019":[9.0,3.0,9.6],"2020":[8.6,3.8,9.4],"2021":[11.8,9.3,13.3],"2022":[6.7,7.8,6.7],"2023":[10.0,12.8,13.3],"2024":[15.0,20.9,20.5],"2026":[15.6,15.8,22.6]}},
+  {n:"Investments & Asset Management",f:1315,m:22.6,g:20.8,r:7.5,ts:{"2014":[null,11.1,8.2],"2015":[24.5,11.7,7.7],"2016":[19.9,10.2,5.7],"2017":[20.8,18.6,7.0],"2018":[19.9,12.0,6.0],"2019":[20.5,14.4,5.3],"2020":[19.1,8.8,4.6],"2021":[22.0,22.0,10.1],"2022":[22.3,15.3,6.3],"2023":[19.6,14.7,5.6],"2024":[20.8,17.7,6.3],"2026":[28.1,20.8,9.1]}},
+  {n:"Machinery",f:1553,m:10.4,g:15.0,r:13.1,ts:{"2011":[8.5,null,null],"2012":[8.9,null,null],"2013":[8.7,2.1,13.5],"2014":[null,7.3,12.3],"2015":[9.5,10.0,11.9],"2016":[9.1,5.4,12.6],"2017":[9.9,9.5,13.0],"2018":[10.2,11.8,13.7],"2019":[9.2,9.1,12.2],"2020":[8.1,3.7,9.6],"2021":[10.2,13.0,13.1],"2022":[10.1,10.9,11.4],"2023":[10.2,8.1,12.7],"2024":[10.6,9.8,12.9],"2026":[10.7,15.0,15.5]}},
+  {n:"Metals & Mining",f:1874,m:13.2,g:23.9,r:18.1,ts:{"2011":[21.6,null,null],"2012":[15.4,null,null],"2013":[13.5,9.2,11.7],"2014":[null,13.5,11.7],"2015":[9.2,-1.9,7.4],"2016":[3.9,-4.7,3.0],"2017":[12.6,13.1,11.9],"2018":[13.7,17.3,14.2],"2019":[9.1,7.0,10.1],"2020":[8.2,11.4,8.7],"2021":[16.2,28.0,21.6],"2022":[16.6,19.9,24.6],"2023":[10.9,10.4,14.8],"2024":[11.2,15.2,15.0],"2026":[10.9,23.9,14.5]}},
+  {n:"Office Equipment & Services",f:139,m:7.6,g:15.0,r:12.8,ts:{"2011":[6.7,null,null],"2012":[7.3,null,null],"2013":[7.0,0.8,14.3],"2014":[null,4.0,12.7],"2015":[8.7,15.8,15.8],"2016":[8.1,11.1,15.8],"2017":[7.5,9.7,13.8],"2018":[7.3,9.4,13.6],"2019":[7.5,9.6,13.2],"2020":[6.9,4.8,10.7],"2021":[7.5,12.7,12.3],"2022":[7.2,8.6,10.5],"2023":[7.4,5.8,11.2],"2024":[7.7,13.7,12.8],"2026":[8.1,15.0,17.0]}},
+  {n:"Oil/Gas (Integrated)",f:34,m:16.1,g:34.3,r:19.2,ts:{"2011":[12.3,null,null],"2012":[10.8,null,null],"2013":[10.3,6.7,12.7],"2014":[null,10.4,10.0],"2015":[3.8,-7.9,2.7],"2016":[2.4,-5.0,1.7],"2017":[6.1,-4.3,4.6],"2018":[9.1,6.0,8.4],"2019":[13.2,-2.6,13.7],"2020":[6.4,-7.0,4.6],"2021":[12.0,18.9,10.5],"2022":[20.4,40.8,27.0],"2023":[18.5,11.4,22.0],"2024":[15.0,11.9,16.9],"2026":[14.4,34.3,19.7]}},
+  {n:"Oil/Gas (Production and Exploration)",f:539,m:30.4,g:25.2,r:19.3,ts:{"2011":[23.7,null,null],"2012":[17.9,null,null],"2013":[22.7,12.5,-1.5],"2014":[null,23.6,11.7],"2015":[0.4,3.0,0.3],"2016":[-15.3,-3.6,-4.0],"2017":[9.1,4.5,2.9],"2018":[18.3,6.1,7.3],"2019":[22.7,2.0,9.1],"2020":[-6.7,-8.7,-2.2],"2021":[13.2,7.7,6.4],"2022":[40.0,35.6,31.4],"2023":[37.2,23.4,24.2],"2024":[32.3,18.4,18.2],"2026":[29.1,25.2,16.5]}},
+  {n:"Oil/Gas Distribution",f:186,m:16.0,g:11.9,r:9.3,ts:{"2011":[10.1,null,null],"2012":[10.4,null,null],"2013":[8.0,11.1,8.7],"2014":[null,15.2,8.4],"2015":[10.7,17.4,7.8],"2016":[13.7,11.6,7.0],"2017":[13.2,15.5,6.4],"2018":[12.9,14.3,6.8],"2019":[14.1,14.2,7.2],"2020":[17.1,9.6,8.1],"2021":[12.7,10.4,6.2],"2022":[10.7,14.5,6.8],"2023":[21.0,12.1,12.6],"2024":[17.8,14.6,10.2],"2026":[17.6,11.9,10.5]}},
+  {n:"Oilfield Svcs/Equip.",f:431,m:5.6,g:8.9,r:11.5,ts:{"2011":[5.3,null,null],"2012":[4.2,null,null],"2013":[4.2,9.0,13.7],"2014":[null,13.0,10.5],"2015":[4.7,8.4,8.5],"2016":[3.6,5.8,5.7],"2017":[5.3,10.2,9.2],"2018":[5.8,6.8,12.2],"2019":[4.2,1.5,8.2],"2020":[1.4,4.2,2.1],"2021":[4.5,5.6,7.3],"2022":[6.5,13.9,14.9],"2023":[6.8,12.3,14.6],"2024":[5.0,13.9,10.2],"2026":[5.1,8.9,10.7]}},
+  {n:"Packaging & Container",f:438,m:8.8,g:6.7,r:11.3,ts:{"2011":[7.8,null,null],"2012":[7.5,null,null],"2013":[7.5,6.0,11.6],"2014":[null,8.2,11.7],"2015":[8.6,8.1,11.2],"2016":[9.0,6.2,12.2],"2017":[9.2,9.4,12.0],"2018":[9.4,14.4,12.5],"2019":[9.2,10.5,11.7],"2020":[9.1,9.0,10.2],"2021":[9.4,13.7,12.2],"2022":[8.9,12.5,11.3],"2023":[8.8,6.6,11.0],"2024":[8.5,7.1,10.7],"2026":[8.1,6.7,11.5]}},
+  {n:"Paper/Forest Products",f:271,m:9.2,g:5.6,r:7.4,ts:{"2011":[6.2,null,null],"2012":[5.2,null,null],"2013":[5.6,2.2,5.2],"2014":[null,5.6,5.6],"2015":[7.1,5.5,5.7],"2016":[7.5,10.2,6.5],"2017":[8.9,16.5,7.7],"2018":[11.9,21.1,10.4],"2019":[7.8,16.0,6.5],"2020":[7.1,13.4,5.4],"2021":[14.3,16.6,12.5],"2022":[13.7,17.3,10.8],"2023":[6.7,6.1,5.0],"2024":[7.1,4.5,5.3],"2026":[4.4,5.6,3.4]}},
+  {n:"Power",f:486,m:11.1,g:9.8,r:6.0,ts:{"2011":[11.1,null,null],"2012":[10.5,null,null],"2013":[11.8,12.8,6.7],"2014":[null,11.9,6.8],"2015":[14.0,8.8,6.7],"2016":[13.6,8.1,7.3],"2017":[12.3,8.6,6.3],"2018":[11.7,7.0,5.8],"2019":[12.7,7.7,6.2],"2020":[13.5,6.7,6.2],"2021":[11.4,7.0,5.8],"2022":[1.0,10.4,0.6],"2023":[13.6,11.3,7.8],"2024":[14.2,9.8,7.0],"2026":[15.3,9.8,8.6]}},
+  {n:"Precious Metals",f:777,m:18.8,g:25.9,r:15.6,ts:{"2011":[26.5,null,null],"2012":[18.6,null,null],"2013":[9.6,29.3,5.2],"2014":[null,33.2,2.6],"2015":[4.4,0.7,2.2],"2016":[6.2,-6.4,3.2],"2017":[12.9,2.6,7.8],"2018":[11.1,7.9,6.5],"2019":[10.4,15.9,6.8],"2020":[19.9,28.8,14.3],"2021":[25.7,32.3,22.8],"2022":[17.0,17.7,13.1],"2023":[12.3,15.5,9.1],"2024":[13.3,25.8,10.3],"2026":[25.6,25.9,22.9]}},
+  {n:"Publishing & Newspapers",f:307,m:7.4,g:7.9,r:9.2,ts:{"2016":[6.5,2.9,9.5],"2017":[7.4,6.8,10.1],"2018":[7.2,5.5,9.0],"2019":[6.2,2.4,7.2],"2020":[5.6,5.8,6.7],"2021":[7.0,11.2,8.3],"2022":[7.2,8.8,7.0],"2023":[7.1,8.3,8.4],"2024":[7.9,8.3,10.3],"2026":[7.7,7.9,11.8]}},
+  {n:"R.E.I.T.",f:643,m:33.6,g:11.2,r:3.6,ts:{"2011":[17.9,null,null],"2012":[2.7,null,null],"2013":[1.2,20.5,0.0],"2014":[null,13.5,3.3],"2015":[33.3,23.1,3.3],"2016":[33.4,15.9,3.5],"2017":[36.0,21.8,3.7],"2018":[35.5,14.6,3.7],"2019":[37.5,11.8,3.5],"2020":[34.7,9.4,2.9],"2021":[32.7,12.4,3.4],"2022":[35.4,14.7,3.6],"2023":[33.5,10.4,3.4],"2024":[32.6,8.3,3.5],"2026":[33.5,11.2,4.2]}},
+  {n:"Real Estate (Development)",f:895,m:7.8,g:12.5,r:3.6,ts:{"2011":[25.8,null,null],"2012":[24.2,null,null],"2013":[22.5,13.7,9.4],"2014":[null,15.8,9.1],"2015":[18.2,14.2,7.2],"2016":[16.1,11.1,6.4],"2017":[18.1,11.2,8.0],"2018":[21.1,9.2,9.5],"2019":[20.4,10.6,9.1],"2020":[17.4,5.8,8.3],"2021":[14.1,11.1,7.8],"2022":[10.6,7.7,4.7],"2023":[5.1,3.7,2.0],"2024":[5.5,7.7,2.1],"2026":[3.5,12.5,1.4]}},
+  {n:"Real Estate (General/Diversified)",f:312,m:15.0,g:13.1,r:3.6,ts:{"2014":[null,9.5,4.9],"2015":[20.0,17.4,5.0],"2016":[17.4,15.4,4.8],"2017":[19.3,18.4,5.4],"2018":[19.6,17.9,5.4],"2019":[19.9,11.1,4.9],"2020":[16.4,0.7,3.9],"2021":[15.3,8.0,3.8],"2022":[14.8,5.8,3.1],"2023":[15.2,1.4,3.5],"2024":[14.9,4.7,3.5],"2026":[14.9,13.1,4.2]}},
+  {n:"Real Estate (Operations & Services)",f:752,m:17.9,g:10.6,r:4.0,ts:{"2011":[28.3,null,null],"2012":[29.4,null,null],"2013":[29.4,11.1,5.3],"2014":[null,10.2,5.2],"2015":[30.7,17.1,5.0],"2016":[28.6,13.7,5.0],"2017":[28.8,23.1,5.4],"2018":[26.6,16.0,4.6],"2019":[23.5,14.6,4.1],"2020":[24.2,11.0,4.6],"2021":[19.5,11.8,3.7],"2022":[15.3,11.7,3.2],"2023":[17.9,4.0,3.9],"2024":[18.4,4.8,4.1],"2026":[18.3,10.6,4.9]}},
+  {n:"Recreation",f:332,m:11.4,g:20.7,r:10.8,ts:{"2011":[9.4,null,null],"2012":[11.0,null,null],"2013":[11.5,2.8,11.7],"2014":[null,4.1,9.8],"2015":[11.2,10.1,10.2],"2016":[11.1,10.0,11.4],"2017":[11.3,11.2,10.1],"2018":[11.1,13.3,9.2],"2019":[11.3,9.1,10.1],"2020":[8.5,1.9,6.7],"2021":[11.3,15.7,10.1],"2022":[11.1,12.4,8.7],"2023":[12.0,8.4,11.2],"2024":[11.2,9.5,9.8],"2026":[11.2,20.7,14.0]}},
+  {n:"Reinsurance",f:32,m:8.9,g:30.8,r:15.2,ts:{"2011":[5.7,null,null],"2012":[12.3,null,null],"2013":[11.1,13.2,13.0],"2014":[null,14.1,15.0],"2015":[10.8,9.5,11.8],"2016":[10.4,16.9,11.8],"2017":[5.6,2.7,6.5],"2018":[7.5,-1.6,9.2],"2019":[6.0,-2.8,7.6],"2020":[4.0,-2.1,5.2],"2021":[6.1,5.5,8.9],"2022":[1.7,-0.2,2.3],"2023":[10.3,15.0,23.3],"2024":[12.9,20.4,20.2],"2026":[13.5,30.8,21.3]}},
+  {n:"Restaurant/Dining",f:410,m:10.8,g:20.6,r:15.1,ts:{"2014":[null,6.7,12.0],"2015":[11.3,9.3,13.4],"2016":[11.5,12.2,13.2],"2017":[12.2,8.6,14.5],"2018":[11.8,7.2,14.6],"2019":[11.4,6.0,15.3],"2020":[6.4,-2.9,5.4],"2021":[10.3,2.1,9.8],"2022":[10.9,4.4,13.0],"2023":[10.7,5.4,12.9],"2024":[11.4,7.1,15.0],"2026":[10.4,20.6,24.7]}},
+  {n:"Retail (Automotive)",f:212,m:5.2,g:13.6,r:12.0,ts:{"2011":[5.1,null,null],"2012":[5.1,null,null],"2013":[4.7,9.0,11.4],"2014":[null,9.6,10.0],"2015":[5.1,11.6,10.1],"2016":[4.9,5.8,9.8],"2017":[4.8,7.0,10.2],"2018":[4.7,9.5,9.8],"2019":[4.4,5.5,7.9],"2020":[5.0,1.9,8.4],"2021":[5.5,13.8,12.6],"2022":[5.3,13.3,12.4],"2023":[4.7,6.9,10.5],"2024":[5.2,10.9,10.3],"2026":[5.3,13.6,14.2]}},
+  {n:"Retail (Building Supply)",f:121,m:11.8,g:0.6,r:29.5,ts:{"2011":[7.4,null,null],"2012":[7.4,null,null],"2013":[8.0,4.2,11.9],"2014":[null,8.0,11.7],"2015":[9.5,10.8,14.9],"2016":[9.9,6.3,18.1],"2017":[10.4,3.0,19.7],"2018":[10.0,5.1,17.9],"2019":[10.0,8.6,19.1],"2020":[11.9,11.3,25.0],"2021":[13.1,14.2,34.0],"2022":[12.7,11.8,29.8],"2023":[11.3,7.9,24.3],"2024":[11.0,5.3,24.6],"2026":[11.0,0.6,34.6]}},
+  {n:"Retail (Distributors)",f:1079,m:5.0,g:21.3,r:8.4,ts:{"2011":[3.9,null,null],"2012":[3.5,null,null],"2013":[3.5,5.9,6.2],"2014":[null,9.4,6.2],"2015":[3.5,10.3,4.8],"2016":[3.3,7.9,5.0],"2017":[4.2,9.9,6.3],"2018":[4.3,12.3,6.8],"2019":[4.2,8.1,6.8],"2020":[3.7,8.0,5.2],"2021":[4.4,11.4,7.3],"2022":[5.5,15.5,9.0],"2023":[5.3,12.2,8.7],"2024":[5.0,12.6,8.0],"2026":[4.9,21.3,8.9]}},
+  {n:"Retail (General)",f:252,m:6.1,g:6.7,r:12.5,ts:{"2011":[5.2,null,null],"2012":[5.1,null,null],"2013":[4.9,8.9,10.8],"2014":[null,8.8,9.0],"2015":[4.8,10.4,8.7],"2016":[4.4,4.4,8.1],"2017":[4.7,4.4,8.3],"2018":[4.6,3.9,8.7],"2019":[4.4,2.5,8.4],"2020":[4.5,-0.5,8.7],"2021":[5.5,5.1,12.0],"2022":[4.9,3.2,11.7],"2023":[5.5,3.7,8.3],"2024":[7.1,2.1,10.1],"2026":[7.5,6.7,20.6]}},
+  {n:"Retail (Grocery and Food)",f:215,m:4.3,g:7.9,r:11.5,ts:{"2011":[4.1,null,null],"2012":[4.1,null,null],"2013":[4.0,6.6,11.1],"2014":[null,10.2,7.3],"2015":[3.5,5.0,6.6],"2016":[3.6,15.1,7.7],"2017":[3.9,9.7,8.9],"2018":[3.7,6.9,8.9],"2019":[3.9,6.6,7.8],"2020":[4.5,6.9,11.1],"2021":[4.5,9.5,10.9],"2022":[4.6,12.4,10.9],"2023":[4.2,8.4,10.9],"2024":[4.2,14.9,10.8],"2026":[3.9,7.9,14.1]}},
+  {n:"Retail (REITs)",f:113,m:52.7,g:13.5,r:5.0,ts:{"2023":[49.5,5.9,4.5],"2024":[51.1,6.3,4.8],"2026":[57.3,13.5,5.6]}},
+  {n:"Retail (Special Lines)",f:649,m:6.4,g:12.6,r:15.3,ts:{"2011":[6.7,null,null],"2012":[6.6,null,null],"2013":[6.8,4.6,16.0],"2014":[null,5.7,11.1],"2015":[6.7,7.8,12.3],"2016":[6.4,4.4,12.4],"2017":[6.3,3.6,11.9],"2018":[6.1,2.2,12.8],"2019":[5.8,6.6,12.0],"2020":[3.6,5.1,6.4],"2021":[6.4,11.8,13.3],"2022":[6.0,12.5,12.1],"2023":[5.5,9.5,11.8],"2024":[6.2,11.5,14.7],"2026":[7.7,12.6,24.4]}},
+  {n:"Rubber& Tires",f:91,m:8.9,g:14.8,r:9.2,ts:{"2011":[7.1,null,null],"2012":[8.1,null,null],"2013":[9.8,6.8,14.5],"2014":[null,8.9,12.4],"2015":[10.7,9.8,11.7],"2016":[11.1,7.6,13.2],"2017":[9.8,12.0,11.1],"2018":[9.4,0.3,9.3],"2019":[8.6,-6.6,8.6],"2020":[5.7,-5.3,4.4],"2021":[10.4,5.5,10.1],"2022":[7.6,11.8,6.7],"2023":[8.8,6.1,8.7],"2024":[10.4,16.3,10.0],"2026":[7.4,14.8,10.7]}},
+  {n:"Semiconductor",f:675,m:24.3,g:13.7,r:18.9,ts:{"2011":[12.2,null,null],"2012":[11.3,null,null],"2013":[13.8,3.0,18.1],"2014":[null,8.3,12.7],"2015":[17.6,0.9,12.6],"2016":[16.0,4.4,12.2],"2017":[21.4,11.8,14.7],"2018":[25.9,16.8,19.2],"2019":[20.2,9.1,12.6],"2020":[20.2,7.3,14.0],"2021":[23.9,27.2,18.7],"2022":[25.1,25.6,18.2],"2023":[18.8,16.3,11.4],"2024":[24.2,14.2,15.9],"2026":[29.7,13.7,30.2]}},
+  {n:"Semiconductor Equip",f:391,m:22.6,g:12.1,r:23.4,ts:{"2011":[15.0,null,null],"2012":[7.8,null,null],"2013":[4.5,-0.1,4.6],"2014":[null,12.6,8.5],"2015":[12.5,7.2,9.9],"2016":[14.2,4.5,13.0],"2017":[19.0,24.6,20.2],"2018":[21.2,32.4,21.6],"2019":[17.2,12.7,15.1],"2020":[19.7,12.4,18.6],"2021":[24.1,29.0,25.1],"2022":[25.2,19.5,26.4],"2023":[22.8,11.4,23.3],"2024":[19.8,17.6,16.8],"2026":[21.4,12.1,25.3]}},
+  {n:"Shipbuilding & Marine",f:359,m:20.6,g:22.3,r:16.7,ts:{"2011":[7.3,null,null],"2012":[5.0,null,null],"2013":[6.1,3.6,5.0],"2014":[null,3.2,4.7],"2015":[7.4,8.9,4.7],"2016":[5.0,3.4,2.9],"2017":[6.8,8.2,4.5],"2018":[6.9,7.2,4.1],"2019":[8.1,7.2,4.4],"2020":[8.2,-2.6,5.0],"2021":[23.6,16.8,20.0],"2022":[33.2,25.3,32.7],"2023":[17.3,22.1,11.2],"2024":[14.6,19.9,9.5],"2026":[14.4,22.3,10.4]}},
+  {n:"Shoe",f:84,m:11.1,g:15.1,r:18.3,ts:{"2011":[10.8,null,null],"2012":[9.8,null,null],"2013":[9.5,8.2,20.4],"2014":[null,9.7,14.7],"2015":[10.1,5.4,15.0],"2016":[9.8,4.6,15.1],"2017":[9.9,6.4,14.7],"2018":[9.7,-0.5,14.3],"2019":[10.2,1.2,16.7],"2020":[6.9,-3.4,9.4],"2021":[12.6,2.5,20.1],"2022":[10.8,6.3,17.2],"2023":[10.5,7.8,15.7],"2024":[12.0,3.5,18.7],"2026":[9.6,15.1,19.9]}},
+  {n:"Software (Entertainment)",f:298,m:34.0,g:11.3,r:22.7,ts:{"2014":[null,0.7,9.8],"2015":[15.6,19.1,13.3],"2016":[15.2,22.9,15.3],"2017":[21.0,26.4,19.3],"2018":[32.4,22.2,19.5],"2019":[28.5,11.3,16.3],"2020":[26.2,17.8,14.0],"2021":[33.2,18.0,21.2],"2022":[29.9,7.5,16.0],"2023":[31.8,9.7,16.0],"2024":[36.8,5.5,21.6],"2026":[38.4,11.3,38.8]}},
+  {n:"Software (Internet)",f:150,m:9.5,g:13.3,r:5.8,ts:{"2014":[null,10.8,17.1],"2015":[18.6,16.1,15.2],"2016":[21.2,14.2,16.5],"2017":[28.0,13.3,17.4],"2018":[9.1,28.6,11.9],"2019":[8.4,28.7,8.3],"2020":[8.1,21.4,5.5],"2021":[7.8,8.1,3.8],"2022":[6.6,12.3,0.6],"2023":[8.0,17.9,1.3],"2024":[11.9,13.3,13.5],"2026":[13.2,13.3,9.6]}},
+  {n:"Software (System & Application)",f:1532,m:28.8,g:16.8,r:25.0,ts:{"2014":[null,9.5,22.0],"2015":[21.4,11.5,18.6],"2016":[15.5,11.0,15.7],"2017":[22.6,15.1,15.4],"2018":[23.7,14.7,16.2],"2019":[24.6,13.5,18.2],"2020":[25.3,11.8,19.3],"2021":[26.7,17.3,21.4],"2022":[25.0,15.3,17.3],"2023":[27.8,12.7,18.3],"2024":[30.4,13.2,21.6],"2026":[34.1,16.8,46.5]}},
+  {n:"Steel",f:719,m:9.0,g:18.4,r:11.6,ts:{"2011":[6.2,null,null],"2012":[3.9,null,null],"2013":[3.4,1.6,4.3],"2014":[null,5.8,5.2],"2015":[2.6,-3.4,2.3],"2016":[3.1,1.2,2.8],"2017":[8.1,9.6,8.9],"2018":[9.4,17.4,8.3],"2019":[7.5,11.3,6.4],"2020":[4.5,8.1,4.5],"2021":[15.1,27.0,20.9],"2022":[12.1,22.8,15.5],"2023":[7.3,12.3,9.1],"2024":[5.7,14.3,6.7],"2026":[4.9,18.4,6.1]}},
+  {n:"Telecom (Wireless)",f:101,m:15.2,g:7.8,r:9.0,ts:{"2011":[17.8,null,null],"2012":[16.9,null,null],"2013":[15.9,8.9,13.6],"2014":[null,9.1,9.7],"2015":[13.0,1.3,8.5],"2016":[12.4,3.0,8.8],"2017":[12.9,-2.5,8.4],"2018":[13.9,3.9,9.3],"2019":[14.0,-0.0,8.5],"2020":[14.4,5.6,8.6],"2021":[14.2,14.1,8.8],"2022":[15.6,10.0,7.2],"2023":[14.8,4.3,8.3],"2024":[15.3,6.3,9.1],"2026":[16.0,7.8,11.7]}},
+  {n:"Telecom. Equipment",f:437,m:12.6,g:9.1,r:14.9,ts:{"2011":[9.7,null,null],"2012":[7.5,null,null],"2013":[9.2,4.1,17.1],"2014":[null,5.8,11.5],"2015":[12.8,4.3,11.1],"2016":[10.9,8.0,11.6],"2017":[10.7,15.2,9.5],"2018":[10.8,12.5,8.3],"2019":[12.1,10.4,11.1],"2020":[12.2,8.0,12.5],"2021":[12.7,7.6,14.3],"2022":[12.4,8.8,12.1],"2023":[12.8,10.8,13.6],"2024":[12.1,10.7,11.5],"2026":[13.2,9.1,23.2]}},
+  {n:"Telecom. Services",f:283,m:15.9,g:12.7,r:10.0,ts:{"2011":[16.4,null,null],"2012":[14.7,null,null],"2013":[13.8,7.0,13.9],"2014":[null,5.5,13.6],"2015":[13.5,7.6,10.8],"2016":[15.2,6.4,12.2],"2017":[15.3,4.7,12.7],"2018":[15.3,7.5,12.7],"2019":[15.3,4.4,10.6],"2020":[15.4,8.3,10.3],"2021":[16.1,11.1,10.6],"2022":[14.9,15.1,8.3],"2023":[15.8,11.0,9.5],"2024":[16.1,11.4,9.4],"2026":[16.4,12.7,12.0]}},
+  {n:"Tobacco",f:48,m:33.5,g:13.3,r:23.6,ts:{"2011":[24.7,null,null],"2012":[28.1,null,null],"2013":[28.6,9.6,56.0],"2014":[null,8.4,52.3],"2015":[27.0,12.7,44.5],"2016":[32.6,12.1,38.9],"2017":[31.4,13.5,41.1],"2018":[32.1,8.1,40.6],"2019":[32.3,9.0,19.3],"2020":[33.1,3.7,18.6],"2021":[34.8,7.9,22.5],"2022":[33.8,5.8,20.0],"2023":[34.0,7.4,23.2],"2024":[32.1,15.4,21.1],"2026":[33.0,13.3,31.4]}},
+  {n:"Transportation",f:451,m:7.5,g:15.9,r:10.6,ts:{"2014":[null,10.4,11.6],"2015":[7.9,7.9,10.2],"2016":[9.3,6.6,12.7],"2017":[8.7,14.3,12.6],"2018":[8.0,11.6,13.7],"2019":[7.2,10.7,10.2],"2020":[6.1,2.7,7.8],"2021":[7.5,13.4,11.3],"2022":[8.2,13.9,12.7],"2023":[7.1,10.9,8.9],"2024":[7.1,8.1,8.8],"2026":[7.6,15.9,11.3]}},
+  {n:"Transportation (Railroads)",f:54,m:21.5,g:18.7,r:7.3,ts:{"2014":[null,5.0,8.9],"2015":[23.2,13.0,9.6],"2016":[20.8,18.2,9.6],"2017":[23.2,9.9,9.6],"2018":[23.1,13.6,9.7],"2019":[23.4,11.1,9.5],"2020":[15.5,-1.5,5.2],"2021":[15.6,-2.0,4.5],"2022":[23.2,-1.6,6.3],"2023":[21.7,-0.2,6.9],"2024":[23.1,7.7,8.4],"2026":[23.6,18.7,10.3]}},
+  {n:"Trucking",f:130,m:8.1,g:12.0,r:9.4,ts:{"2011":[6.0,null,null],"2012":[6.2,null,null],"2013":[6.3,1.9,9.4],"2014":[null,5.4,9.2],"2015":[6.9,15.0,9.5],"2016":[6.7,10.9,8.1],"2017":[6.4,14.2,7.7],"2018":[6.7,14.2,7.7],"2019":[4.4,8.6,4.3],"2020":[2.2,3.5,0.5],"2021":[6.5,13.7,5.8],"2022":[9.6,15.0,9.3],"2023":[9.0,8.6,11.6],"2024":[7.9,6.1,9.4],"2026":[7.8,12.0,10.7]}},
+  {n:"Utility (General)",f:52,m:13.4,g:12.6,r:8.3,ts:{"2011":[12.9,null,null],"2012":[10.5,null,null],"2013":[10.5,4.0,8.7],"2014":[null,2.0,7.4],"2015":[10.2,0.7,7.0],"2016":[10.9,3.5,8.6],"2017":[9.9,7.8,6.3],"2018":[10.5,12.3,7.3],"2019":[9.7,2.9,5.9],"2020":[12.1,4.9,6.7],"2021":[12.5,9.4,7.0],"2022":[11.6,7.4,7.7],"2023":[12.4,13.8,8.3],"2024":[15.2,10.4,8.4],"2026":[15.4,12.6,9.9]}},
+  {n:"Utility (Water)",f:106,m:25.1,g:5.7,r:7.1,ts:{"2011":[28.1,null,null],"2012":[27.5,null,null],"2013":[28.2,9.7,9.0],"2014":[null,13.0,9.2],"2015":[26.0,8.0,7.1],"2016":[26.0,9.3,5.2],"2017":[27.0,11.2,5.9],"2018":[27.5,7.4,6.4],"2019":[28.2,4.4,6.2],"2020":[26.9,5.2,4.9],"2021":[25.2,3.0,7.1],"2022":[23.5,1.3,6.8],"2023":[23.4,5.5,6.9],"2024":[26.4,4.4,6.9],"2026":[26.8,5.7,7.8]}}
+];
+var MARKET = {m:11.5,g:14.2,r:11.6,ts:{"2011":[9.3,null,null],"2012":[8.6,null,null],"2013":[8.6,6.9,5.8],"2014":[null,9.9,5.9],"2015":[8.7,9.9,5.1],"2016":[8.8,8.7,8.8],"2017":[10.1,11.8,10.1],"2018":[10.5,12.4,10.5],"2019":[10.2,9.7,9.8],"2020":[8.8,7.1,7.7],"2021":[11.2,13.2,11.2],"2022":[11.5,12.9,11.2],"2023":[11.0,9.8,11.1],"2024":[10.3,10.7,11.0],"2026":[13.2,14.2,13.4]}};
+var YEARS = ["2011", "2012", "2013", "2014", "2015", "2016", "2017", "2018", "2019", "2020", "2021", "2022", "2023", "2024", "2026"];
+        
+        // State
+        var gApp = {
+            selectedIndustry: null,
+            sortBy: 'alphabetical',
+            searchText: '',
+            scatterX: 'm',
+            scatterY: 'g',
+            filteredIndustries: []
+        };
+        
+        // Initialization
+        function init() {
+            gApp.filteredIndustries = INDUSTRIES.slice();
+            renderCards();
+            renderBarChart();
+            renderScatterPlot();
+            renderTable();
+            setupEventListeners();
+        }
+        
+        // Render dimension cards
+        function renderCards() {
+            var minM = null, maxM = null, minG = null, maxG = null, minR = null, maxR = null;
+            for (var i = 0; i < INDUSTRIES.length; i++) {
+                var ind = INDUSTRIES[i];
+                if (ind.m != null) { minM = minM == null ? ind.m : Math.min(minM, ind.m); maxM = maxM == null ? ind.m : Math.max(maxM, ind.m); }
+                if (ind.g != null) { minG = minG == null ? ind.g : Math.min(minG, ind.g); maxG = maxG == null ? ind.g : Math.max(maxG, ind.g); }
+                if (ind.r != null) { minR = minR == null ? ind.r : Math.min(minR, ind.r); maxR = maxR == null ? ind.r : Math.max(maxR, ind.r); }
+            }
+            
+            function fmt(v) { return v != null ? v.toFixed(1) : '—'; }
+            
+            var marginMarket = document.getElementById('margin-market');
+            if (marginMarket) marginMarket.innerHTML = (MARKET.m != null ? MARKET.m.toFixed(1) : '—') + '%';
+            var marginRange = document.getElementById('margin-range');
+            if (marginRange) marginRange.innerHTML = (minM != null ? minM.toFixed(1) : '—') + '% – ' + (maxM != null ? maxM.toFixed(1) : '—') + '%';
+            
+            var growthMarket = document.getElementById('growth-market');
+            if (growthMarket) growthMarket.innerHTML = (MARKET.g != null ? MARKET.g.toFixed(1) : '—') + '%';
+            var growthRange = document.getElementById('growth-range');
+            if (growthRange) growthRange.innerHTML = (minG != null ? minG.toFixed(1) : '—') + '% – ' + (maxG != null ? maxG.toFixed(1) : '—') + '%';
+            
+            var roicMarket = document.getElementById('roic-market');
+            if (roicMarket) roicMarket.innerHTML = (MARKET.r != null ? MARKET.r.toFixed(1) : '—') + '%';
+            var roicRange = document.getElementById('roic-range');
+            if (roicRange) roicRange.innerHTML = (minR != null ? minR.toFixed(1) : '—') + '% – ' + (maxR != null ? maxR.toFixed(1) : '—') + '%';
+        }
+        
+        // Filter and sort industries
+        function getFilteredAndSorted() {
+            var result = INDUSTRIES.slice();
+            
+            // Filter by search
+            if (gApp.searchText) {
+                var s = gApp.searchText.toLowerCase();
+                result = result.filter(function(ind) { return ind.n.toLowerCase().indexOf(s) > -1; });
+            }
+            
+            // Sort
+            if (gApp.sortBy === 'alphabetical') {
+                result.sort(function(a, b) { return a.n.localeCompare(b.n); });
+            } else if (gApp.sortBy === 'margin') {
+                result.sort(function(a, b) { 
+                    var aVal = a.m != null ? a.m : -999;
+                    var bVal = b.m != null ? b.m : -999;
+                    return bVal - aVal;
+                });
+            } else if (gApp.sortBy === 'growth') {
+                result.sort(function(a, b) { 
+                    var aVal = a.g != null ? a.g : -999;
+                    var bVal = b.g != null ? b.g : -999;
+                    return bVal - aVal;
+                });
+            } else if (gApp.sortBy === 'roic') {
+                result.sort(function(a, b) { 
+                    var aVal = a.r != null ? a.r : -999;
+                    var bVal = b.r != null ? b.r : -999;
+                    return bVal - aVal;
+                });
+            }
+            
+            gApp.filteredIndustries = result;
+            return result;
+        }
+        
+        // Render bar chart
+        function renderBarChart() {
+            var sorted = getFilteredAndSorted();
+            var metric = gApp.sortBy === 'alphabetical' ? 'margin' : gApp.sortBy;
+            var container = document.getElementById('barChartContainer');
+            if (!container) return;
+            container.innerHTML = '';
+            
+            // Find the actual max value to scale bars properly
+            var absMax = 0;
+            for (var i = 0; i < sorted.length; i++) {
+                var v = metric === 'margin' ? sorted[i].m : (metric === 'growth' ? sorted[i].g : sorted[i].r);
+                if (v != null && Math.abs(v) > absMax) absMax = Math.abs(v);
+            }
+            if (absMax === 0) absMax = 1;
+
+            for (var i = 0; i < sorted.length; i++) {
+                var ind = sorted[i];
+                var val = metric === 'margin' ? ind.m : (metric === 'growth' ? ind.g : ind.r);
+                if (val == null) val = 0;
+
+                var pct = Math.min(Math.abs(val) / absMax * 100, 100);
+
+                var item = document.createElement('div');
+                item.className = 'bar-item';
+                item.innerHTML = '<div class="bar-label" title="' + ind.n + '">' + ind.n + '</div>' +
+                    '<div class="bar-container"><div class="bar ' + (val >= 0 ? 'positive' : 'negative') + '" style="width:' + pct + '%" title="' + (val != null ? val.toFixed(1) : '—') + '%"></div></div>' +
+                    '<div class="bar-value">' + (val != null ? val.toFixed(1) : '—') + '</div>';
+                (function(clickInd) {
+                    item.onclick = function(e) { selectIndustry(clickInd); };
+                })(ind);
+                container.appendChild(item);
+            }
+        }
+        
+        // Render scatter plot
+        function renderScatterPlot() {
+            var svg = document.getElementById('scatterPlot');
+            if (!svg) return;
+            
+            var w = svg.clientWidth || 800;
+            var h = svg.clientHeight || 500;
+            svg.setAttribute('width', w);
+            svg.setAttribute('height', h);
+            
+            var sorted = getFilteredAndSorted();
+            var margin = 60;
+            var plotW = w - margin * 2;
+            var plotH = h - margin * 2;
+            
+            // Get ranges
+            var xMin = null, xMax = null, yMin = null, yMax = null;
+            for (var i = 0; i < INDUSTRIES.length; i++) {
+                var val = gApp.scatterX === 'm' ? INDUSTRIES[i].m : (gApp.scatterX === 'g' ? INDUSTRIES[i].g : INDUSTRIES[i].r);
+                if (val != null) { xMin = xMin == null ? val : Math.min(xMin, val); xMax = xMax == null ? val : Math.max(xMax, val); }
+                val = gApp.scatterY === 'm' ? INDUSTRIES[i].m : (gApp.scatterY === 'g' ? INDUSTRIES[i].g : INDUSTRIES[i].r);
+                if (val != null) { yMin = yMin == null ? val : Math.min(yMin, val); yMax = yMax == null ? val : Math.max(yMax, val); }
+            }
+            xMin = xMin == null ? 0 : xMin - 2;
+            xMax = xMax == null ? 10 : xMax + 2;
+            yMin = yMin == null ? 0 : yMin - 2;
+            yMax = yMax == null ? 10 : yMax + 2;
+            
+            svg.innerHTML = '';
+            
+            // Draw grid and axes
+            var g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+            g.setAttribute('transform', 'translate(' + margin + ',' + (h - margin) + ')');
+            
+            // Axes
+            var axisX = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            axisX.setAttribute('x1', 0); axisX.setAttribute('y1', 0);
+            axisX.setAttribute('x2', plotW); axisX.setAttribute('y2', 0);
+            axisX.setAttribute('stroke', '#d1d5db'); axisX.setAttribute('stroke-width', 2);
+            g.appendChild(axisX);
+            
+            var axisY = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            axisY.setAttribute('x1', 0); axisY.setAttribute('y1', 0);
+            axisY.setAttribute('x2', 0); axisY.setAttribute('y2', -plotH);
+            axisY.setAttribute('stroke', '#d1d5db'); axisY.setAttribute('stroke-width', 2);
+            g.appendChild(axisY);
+            
+            // Crosshairs at market average
+            var mktX = (MARKET.m != null ? MARKET.m : (xMin + xMax) / 2);
+            var mktY = (MARKET.g != null ? MARKET.g : (yMin + yMax) / 2);
+            if (gApp.scatterX !== 'm') mktX = (MARKET.g != null ? MARKET.g : (xMin + xMax) / 2);
+            if (gApp.scatterX === 'r') mktX = (MARKET.r != null ? MARKET.r : (xMin + xMax) / 2);
+            if (gApp.scatterY === 'm') mktY = (MARKET.m != null ? MARKET.m : (yMin + yMax) / 2);
+            if (gApp.scatterY === 'r') mktY = (MARKET.r != null ? MARKET.r : (yMin + yMax) / 2);
+            
+            var xPx = (mktX - xMin) / (xMax - xMin) * plotW;
+            var yPx = -(mktY - yMin) / (yMax - yMin) * plotH;
+            
+            var chX = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            chX.setAttribute('x1', xPx); chX.setAttribute('y1', -plotH);
+            chX.setAttribute('x2', xPx); chX.setAttribute('y2', 0);
+            chX.setAttribute('stroke', '#ccc'); chX.setAttribute('stroke-dasharray', '4'); chX.setAttribute('stroke-width', 1);
+            g.appendChild(chX);
+            
+            var chY = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            chY.setAttribute('x1', 0); chY.setAttribute('y1', yPx);
+            chY.setAttribute('x2', plotW); chY.setAttribute('y2', yPx);
+            chY.setAttribute('stroke', '#ccc'); chY.setAttribute('stroke-dasharray', '4'); chY.setAttribute('stroke-width', 1);
+            g.appendChild(chY);
+            
+            // Tooltip element
+            var tooltip = document.getElementById('scatterTooltip');
+            if (!tooltip) {
+                tooltip = document.createElement('div');
+                tooltip.id = 'scatterTooltip';
+                tooltip.style.cssText = 'position:fixed;background:#1f2937;color:#fff;padding:8px 12px;border-radius:6px;font-size:12px;pointer-events:none;z-index:1000;display:none;max-width:250px;line-height:1.5;box-shadow:0 4px 12px rgba(0,0,0,0.2)';
+                document.body.appendChild(tooltip);
+            }
+
+            var xLabel = gApp.scatterX === 'm' ? 'Margin' : (gApp.scatterX === 'g' ? 'Growth' : 'ROIC');
+            var yLabel = gApp.scatterY === 'm' ? 'Margin' : (gApp.scatterY === 'g' ? 'Growth' : 'ROIC');
+
+            // Plot points
+            for (var i = 0; i < sorted.length; i++) {
+                (function(ind) {
+                    var xVal = gApp.scatterX === 'm' ? ind.m : (gApp.scatterX === 'g' ? ind.g : ind.r);
+                    var yVal = gApp.scatterY === 'm' ? ind.m : (gApp.scatterY === 'g' ? ind.g : ind.r);
+
+                    if (xVal == null || yVal == null) return;
+
+                    var x = (xVal - xMin) / (xMax - xMin) * plotW;
+                    var y = -(yVal - yMin) / (yMax - yMin) * plotH;
+
+                    var circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                    circle.setAttribute('cx', x);
+                    circle.setAttribute('cy', y);
+                    circle.setAttribute('r', 6);
+                    circle.setAttribute('fill', '#7c3aed');
+                    circle.setAttribute('opacity', 0.7);
+                    circle.setAttribute('data-ind', ind.n);
+                    circle.style.cursor = 'pointer';
+
+                    circle.onmouseenter = function(e) {
+                        circle.setAttribute('r', 9);
+                        circle.setAttribute('opacity', 1);
+                        tooltip.style.display = 'block';
+                        tooltip.innerHTML = '<strong>' + ind.n + '</strong><br>' +
+                            xLabel + ': ' + xVal.toFixed(1) + '%<br>' +
+                            yLabel + ': ' + yVal.toFixed(1) + '%';
+                    };
+                    circle.onmousemove = function(e) {
+                        tooltip.style.left = (e.clientX + 14) + 'px';
+                        tooltip.style.top = (e.clientY - 14) + 'px';
+                    };
+                    circle.onmouseleave = function(e) {
+                        circle.setAttribute('r', 6);
+                        circle.setAttribute('opacity', 0.7);
+                        tooltip.style.display = 'none';
+                    };
+                    circle.onclick = function(e) { selectIndustry(ind); };
+                    g.appendChild(circle);
+                })(sorted[i]);
+            }
+
+            // Axis labels
+            var xLabelEl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            xLabelEl.setAttribute('x', plotW / 2); xLabelEl.setAttribute('y', 45);
+            xLabelEl.setAttribute('text-anchor', 'middle'); xLabelEl.setAttribute('fill', '#6b7280'); xLabelEl.setAttribute('font-size', '13');
+            xLabelEl.textContent = xLabel + ' (%)';
+            g.appendChild(xLabelEl);
+
+            var yLabelEl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            yLabelEl.setAttribute('x', 0); yLabelEl.setAttribute('y', -plotH - 10);
+            yLabelEl.setAttribute('text-anchor', 'start'); yLabelEl.setAttribute('fill', '#6b7280'); yLabelEl.setAttribute('font-size', '13');
+            yLabelEl.textContent = yLabel + ' (%)';
+            g.appendChild(yLabelEl);
+
+            // Tick labels on axes
+            var xTicks = 5;
+            for (var t = 0; t <= xTicks; t++) {
+                var tickVal = xMin + (xMax - xMin) * t / xTicks;
+                var tickX = t / xTicks * plotW;
+                var tickLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                tickLabel.setAttribute('x', tickX); tickLabel.setAttribute('y', 20);
+                tickLabel.setAttribute('text-anchor', 'middle'); tickLabel.setAttribute('fill', '#9ca3af'); tickLabel.setAttribute('font-size', '11');
+                tickLabel.textContent = tickVal.toFixed(0);
+                g.appendChild(tickLabel);
+            }
+            var yTicks = 5;
+            for (var t = 0; t <= yTicks; t++) {
+                var tickVal = yMin + (yMax - yMin) * t / yTicks;
+                var tickY = -(t / yTicks * plotH);
+                var tickLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                tickLabel.setAttribute('x', -8); tickLabel.setAttribute('y', tickY + 4);
+                tickLabel.setAttribute('text-anchor', 'end'); tickLabel.setAttribute('fill', '#9ca3af'); tickLabel.setAttribute('font-size', '11');
+                tickLabel.textContent = tickVal.toFixed(0);
+                g.appendChild(tickLabel);
+            }
+
+            svg.appendChild(g);
+        }
+        
+        // Render data table
+        function renderTable() {
+            var sorted = getFilteredAndSorted();
+            var tbody = document.getElementById('tableBody');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+            
+            for (var i = 0; i < sorted.length; i++) {
+                (function(ind) {
+                    var tr = document.createElement('tr');
+                    tr.innerHTML = '<td>' + ind.n + '</td>' +
+                        '<td>' + (ind.f != null ? ind.f : '—') + '</td>' +
+                        '<td>' + (ind.m != null ? ind.m.toFixed(1) : '—') + '</td>' +
+                        '<td>' + (ind.g != null ? ind.g.toFixed(1) : '—') + '</td>' +
+                        '<td>' + (ind.r != null ? ind.r.toFixed(1) : '—') + '</td>';
+                    tr.onclick = function(e) { selectIndustry(ind); };
+                    tbody.appendChild(tr);
+                })(sorted[i]);
+            }
+        }
+        
+        // Select industry and show profile
+        function selectIndustry(ind) {
+            gApp.selectedIndustry = ind;
+            renderProfile();
+        }
+        
+        // Render profile panel
+        function renderProfile() {
+            var panel = document.getElementById('profilePanel');
+            if (!panel) return;
+            
+            if (!gApp.selectedIndustry) {
+                panel.innerHTML = '<div class="default-message"><h3>How to Use This Tool</h3><p>Click on any industry in the bar chart, scatter plot, or data table to see detailed metrics including historical trends. The profile panel will show you how each industry compares to the market average on all three dimensions.</p></div>';
+                return;
+            }
+            
+            var ind = gApp.selectedIndustry;
+            var html = '<div class="profile-name">' + ind.n + '</div>' +
+                '<div class="profile-firms">' + (ind.f != null ? ind.f : '0') + ' firms</div>' +
+                '<div class="metrics-grid">';
+            
+            // Helper to calculate percentile
+            function getPercentile(val, metric) {
+                if (val == null) return null;
+                var count = 0, rank = 0;
+                for (var i = 0; i < INDUSTRIES.length; i++) {
+                    var v = metric === 'm' ? INDUSTRIES[i].m : (metric === 'g' ? INDUSTRIES[i].g : INDUSTRIES[i].r);
+                    if (v != null) {
+                        count++;
+                        if (v <= val) rank++;
+                    }
+                }
+                return count > 0 ? Math.round(rank / count * 100) : null;
+            }
+            
+            // Helper to calculate difference from market
+            function getDiff(val, mktVal) {
+                if (val == null || mktVal == null) return null;
+                return val - mktVal;
+            }
+            
+            // Helper to generate sparkline
+            function getSparkline(ts, metric) {
+                var data = [];
+                var dataYears = [];
+                for (var j = 0; j < YEARS.length; j++) {
+                    var year = YEARS[j];
+                    if (ts && ts[year] && ts[year][metric] != null) {
+                        data.push(ts[year][metric]);
+                        dataYears.push(year);
+                    }
+                }
+                if (data.length < 2) return '<div style="color:#9ca3af;font-size:11px;margin-top:8px;font-style:italic">Insufficient historical data</div>';
+
+                var minVal = Math.min.apply(null, data);
+                var maxVal = Math.max.apply(null, data);
+                var range = maxVal - minVal;
+                if (range === 0) range = 1;
+
+                // Chart area
+                var svgW = 280;
+                var svgH = 80;
+                var padL = 32;
+                var padR = 8;
+                var padT = 8;
+                var padB = 22;
+                var chartW = svgW - padL - padR;
+                var chartH = svgH - padT - padB;
+
+                // Build polyline points
+                var points = '';
+                var areaPoints = '';
+                for (var k = 0; k < data.length; k++) {
+                    var x = padL + (data.length > 1 ? k / (data.length - 1) : 0.5) * chartW;
+                    var y = padT + (1 - (data[k] - minVal) / range) * chartH;
+                    points += x.toFixed(1) + ',' + y.toFixed(1) + ' ';
+                    areaPoints += x.toFixed(1) + ',' + y.toFixed(1) + ' ';
+                }
+                // Close area path
+                var lastX = padL + chartW;
+                var firstX = padL;
+                areaPoints += lastX.toFixed(1) + ',' + (padT + chartH).toFixed(1) + ' ' + firstX.toFixed(1) + ',' + (padT + chartH).toFixed(1);
+
+                var svg = '<svg style="width:100%;height:80px;display:block;margin-top:8px" viewBox="0 0 ' + svgW + ' ' + svgH + '">';
+
+                // Light grid line at zero if range spans negative
+                if (minVal < 0 && maxVal > 0) {
+                    var zeroY = padT + (1 - (0 - minVal) / range) * chartH;
+                    svg += '<line x1="' + padL + '" y1="' + zeroY.toFixed(1) + '" x2="' + (svgW - padR) + '" y2="' + zeroY.toFixed(1) + '" stroke="#e5e7eb" stroke-width="0.5" stroke-dasharray="3,2"/>';
+                    svg += '<text x="' + (padL - 4) + '" y="' + (zeroY + 3).toFixed(1) + '" font-size="8" fill="#9ca3af" text-anchor="end">0</text>';
+                }
+
+                // Filled area under curve
+                svg += '<polygon points="' + areaPoints + '" fill="currentColor" opacity="0.08"/>';
+
+                // Line
+                svg += '<polyline points="' + points + '" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>';
+
+                // Data point dots for first and last
+                var firstPx = padL;
+                var firstPy = padT + (1 - (data[0] - minVal) / range) * chartH;
+                var lastPx = padL + chartW;
+                var lastPy = padT + (1 - (data[data.length - 1] - minVal) / range) * chartH;
+                svg += '<circle cx="' + firstPx.toFixed(1) + '" cy="' + firstPy.toFixed(1) + '" r="2.5" fill="currentColor"/>';
+                svg += '<circle cx="' + lastPx.toFixed(1) + '" cy="' + lastPy.toFixed(1) + '" r="2.5" fill="currentColor"/>';
+
+                // Value labels at first and last points
+                svg += '<text x="' + firstPx.toFixed(1) + '" y="' + (firstPy - 5).toFixed(1) + '" font-size="8" fill="#6b7280" text-anchor="start">' + data[0].toFixed(1) + '%</text>';
+                svg += '<text x="' + lastPx.toFixed(1) + '" y="' + (lastPy - 5).toFixed(1) + '" font-size="8" fill="#6b7280" text-anchor="end">' + data[data.length - 1].toFixed(1) + '%</text>';
+
+                // Year labels on x-axis — show every ~3rd year
+                var step = Math.max(1, Math.floor(data.length / 4));
+                for (var k = 0; k < data.length; k++) {
+                    if (k === 0 || k === data.length - 1 || k % step === 0) {
+                        var tx = padL + (data.length > 1 ? k / (data.length - 1) : 0.5) * chartW;
+                        var anchor = k === 0 ? 'start' : (k === data.length - 1 ? 'end' : 'middle');
+                        svg += '<text x="' + tx.toFixed(1) + '" y="' + (svgH - 4) + '" font-size="8" fill="#9ca3af" text-anchor="' + anchor + '">' + dataYears[k] + '</text>';
+                    }
+                }
+
+                // Y-axis: min and max labels
+                svg += '<text x="' + (padL - 4) + '" y="' + (padT + 4) + '" font-size="8" fill="#9ca3af" text-anchor="end">' + maxVal.toFixed(0) + '</text>';
+                svg += '<text x="' + (padL - 4) + '" y="' + (padT + chartH + 3) + '" font-size="8" fill="#9ca3af" text-anchor="end">' + minVal.toFixed(0) + '</text>';
+
+                svg += '</svg>';
+                return svg;
+            }
+            
+            // Margin metric
+            html += '<div class="metric margin">' +
+                '<div class="metric-name">Profit Margin</div>' +
+                '<div class="metric-value">' + (ind.m != null ? ind.m.toFixed(1) : '—') + '%</div>' +
+                '<div class="metric-detail">Percentile: ' + (getPercentile(ind.m, 'm') != null ? getPercentile(ind.m, 'm') : '—') + 'th</div>' +
+                '<div class="metric-detail">vs Market: ' + (getDiff(ind.m, MARKET.m) != null ? (getDiff(ind.m, MARKET.m) > 0 ? '+' : '') + getDiff(ind.m, MARKET.m).toFixed(1) : '—') + 'pp</div>' +
+                getSparkline(ind.ts, 0) +
+                '</div>';
+            
+            // Growth metric
+            html += '<div class="metric growth">' +
+                '<div class="metric-name">Industry Growth</div>' +
+                '<div class="metric-value">' + (ind.g != null ? ind.g.toFixed(1) : '—') + '%</div>' +
+                '<div class="metric-detail">Percentile: ' + (getPercentile(ind.g, 'g') != null ? getPercentile(ind.g, 'g') : '—') + 'th</div>' +
+                '<div class="metric-detail">vs Market: ' + (getDiff(ind.g, MARKET.g) != null ? (getDiff(ind.g, MARKET.g) > 0 ? '+' : '') + getDiff(ind.g, MARKET.g).toFixed(1) : '—') + 'pp</div>' +
+                getSparkline(ind.ts, 1) +
+                '</div>';
+            
+            // ROIC metric
+            html += '<div class="metric roic">' +
+                '<div class="metric-name">Return on Investment</div>' +
+                '<div class="metric-value">' + (ind.r != null ? ind.r.toFixed(1) : '—') + '%</div>' +
+                '<div class="metric-detail">Percentile: ' + (getPercentile(ind.r, 'r') != null ? getPercentile(ind.r, 'r') : '—') + 'th</div>' +
+                '<div class="metric-detail">vs Market: ' + (getDiff(ind.r, MARKET.r) != null ? (getDiff(ind.r, MARKET.r) > 0 ? '+' : '') + getDiff(ind.r, MARKET.r).toFixed(1) : '—') + 'pp</div>' +
+                getSparkline(ind.ts, 2) +
+                '</div>';
+            
+            html += '</div>';
+            panel.innerHTML = html;
+        }
+        
+        // Setup event listeners
+        function setupEventListeners() {
+            // Tabs
+            var tabBtns = document.querySelectorAll('.tab-btn');
+            for (var i = 0; i < tabBtns.length; i++) {
+                tabBtns[i].addEventListener('click', function(e) {
+                    var viewName = e.target.getAttribute('data-view');
+                    var views = document.querySelectorAll('.view');
+                    for (var j = 0; j < views.length; j++) views[j].classList.remove('active');
+                    var activeView = document.getElementById(viewName);
+                    if (activeView) activeView.classList.add('active');
+                    
+                    var allBtns = document.querySelectorAll('.tab-btn');
+                    for (var j = 0; j < allBtns.length; j++) allBtns[j].classList.remove('active');
+                    e.target.classList.add('active');
+                    
+                    if (viewName === 'scatter') renderScatterPlot();
+                });
+            }
+            
+            // Sort dropdown
+            var sortSelect = document.getElementById('sortSelect');
+            if (sortSelect) {
+                sortSelect.addEventListener('change', function(e) {
+                    gApp.sortBy = e.target.value;
+                    renderBarChart();
+                    renderTable();
+                });
+            }
+            
+            // Search input
+            var searchInput = document.getElementById('searchInput');
+            if (searchInput) {
+                searchInput.addEventListener('input', function(e) {
+                    gApp.searchText = e.target.value;
+                    renderBarChart();
+                    renderTable();
+                });
+            }
+            
+            // Scatter axes
+            var xAxis = document.getElementById('scatterXAxis');
+            if (xAxis) {
+                xAxis.addEventListener('change', function(e) {
+                    gApp.scatterX = e.target.value;
+                    renderScatterPlot();
+                });
+            }
+            var yAxis = document.getElementById('scatterYAxis');
+            if (yAxis) {
+                yAxis.addEventListener('change', function(e) {
+                    gApp.scatterY = e.target.value;
+                    renderScatterPlot();
+                });
+            }
+        }
+        
+        // Run
+        window.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
