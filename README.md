@@ -2,7 +2,7 @@
 
 An interactive tool for exploring how industries differ in profitability, growth, and return on investment. Built for educational use in strategy and industry analysis courses.
 
-**[Launch the tool](https://karltaeuscher.github.io/industry-explorer/)**
+**[Launch the tool](https://ktaeuscher.github.io/industry-explorer/)**
 
 ## About
 
